@@ -1,0 +1,20 @@
+# Byte-compiled / optimized / DLL files
+.venv/
+.idea/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Environment variables
+.env*
+!.env.example
+
+# Docker Compose local
+docker.compose.override.yml
+
+# Celery stuff
+celerybeat-schedule
+celerybeat-schedule-shm
+celerybeat-schedule-wal
+celerybeat.pid

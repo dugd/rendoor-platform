@@ -1,0 +1,72 @@
+x-logging: &default-logging
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "3" }
+
+services:
+  app:
+    <<: *default-logging
+    build:
+      context: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn src.web.app:app --host 0.0.0.0 --port 8000 --no-access-log
+    environment:
+      APP_SERVICE_NAME: web-app
+    ports:
+      - ${EXPOSE_WEB_PORT:-8000}:8000
+  celery-worker:
+    <<: *default-logging
+    build:
+      context: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A src.scheduler.app_celery worker -E -l INFO
+    environment:
+      APP_SERVICE_NAME: celery-worker
+  celery-beat:
+    <<: *default-logging
+    build:
+      context: .
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: celery -A src.scheduler.app_celery beat -l INFO
+    environment:
+      APP_SERVICE_NAME: celery-beat
+  postgres:
+    <<: *default-logging
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-app}
+      POSTGRES_USER: ${DB_USER:-user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD?}
+      TZ: Europe/Kyiv
+      PGTZ: Europe/Kyiv
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-user} -d ${DB_DATABASE:-app} -h 127.0.0.1 -p 5432" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+  redis:
+    <<: *default-logging
+    image: redis:8.2
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+volumes:
+  pgdata:
