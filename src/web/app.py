@@ -10,7 +10,7 @@ from .middlewares import AccessLogMiddleware
 app = FastAPI()
 
 setup_loguru(
-    service=os.environ.get("SERVICE_NAME", "fastapi-app"),
+    service=os.environ.get("APP_SERVICE_NAME", "fastapi-app"),
     level=get_settings().LOGGING_LEVEL,
     sink="text",  # TODO: switch via env
     settings={

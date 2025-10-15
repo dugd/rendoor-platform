@@ -9,7 +9,7 @@ from src.core.logger import setup_loguru
 settings = get_settings()
 
 setup_loguru(
-    service=os.environ.get("SERVICE_NAME", "celery-app"),
+    service=os.environ.get("APP_SERVICE_NAME", "celery-app"),
     level=get_settings().LOGGING_LEVEL,
     sink="text",  # TODO: switch via env
     settings={
