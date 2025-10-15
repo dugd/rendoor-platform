@@ -12,12 +12,14 @@ app = FastAPI()
 setup_loguru(
     service=os.environ.get("SERVICE_NAME", "fastapi-app"),
     level=get_settings().LOGGING_LEVEL,
-    sink="text", # TODO: switch via env
+    sink="text",  # TODO: switch via env
     settings={
         "backtrace": True,
         "enqueue": True,
         "diagnose": True,
-    } if get_settings().DEBUG else {
+    }
+    if get_settings().DEBUG
+    else {
         "backtrace": False,
         "enqueue": True,
         "diagnose": False,
@@ -25,6 +27,7 @@ setup_loguru(
 )
 
 app.add_middleware(AccessLogMiddleware)
+
 
 @app.get("/")
 async def read_root():
