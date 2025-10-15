@@ -1,8 +1,29 @@
-from celery import Celery
+import os
+
+from loguru import logger
+from celery import Celery, signals
 
 from src.core.config import get_settings
+from src.core.logger import setup_loguru
 
 settings = get_settings()
+
+setup_loguru(
+    service=os.environ.get("SERVICE_NAME", "celery-app"),
+    level=get_settings().LOGGING_LEVEL,
+    sink="text",  # TODO: switch via env
+    settings={
+        "backtrace": True,
+        "enqueue": True,
+        "diagnose": True,
+    }
+    if get_settings().DEBUG
+    else {
+        "backtrace": False,
+        "enqueue": True,
+        "diagnose": False,
+    },
+)
 
 celery = Celery(
     "job",
@@ -16,3 +37,34 @@ celery.conf.update(
     timezone="Europe/Kyiv",
     enable_utc=True,
 )
+
+
+@signals.setup_logging.connect
+def _celery_setup_logging(**kwargs):
+    setup_loguru(
+        service=os.environ.get("SERVICE_NAME", "celery-app"),
+        level=get_settings().app.LOGGING_LEVEL,
+    )
+
+
+@signals.worker_process_init.connect
+def _celery_worker_process_init(**kwargs):
+    setup_loguru(
+        service=os.environ.get("SERVICE_NAME", "celery-app"),
+        level=get_settings().app.LOGGING_LEVEL,
+    )
+
+
+@signals.task_prerun.connect
+def on_task_start(sender=None, task_id=None, **_):
+    logger.bind(task_id=task_id, task_name=sender.name).info("Task start")
+
+
+@signals.task_postrun.connect
+def on_task_end(sender=None, task_id=None, state=None, **_):
+    logger.bind(task_id=task_id, task_name=sender.name, state=state).info("Task end")
+
+
+@signals.task_failure.connect
+def on_task_fail(sender=None, task_id=None, **kw):
+    logger.bind(task_id=task_id, task_name=sender.name).exception("Task failed")
