@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from functools import lru_cache
@@ -23,6 +25,9 @@ class Settings(BaseSettings):
     DB_URL: str
 
     BROKER_URL: str
+
+    def get_postgres_dsn(self, driver: Literal["asyncpg", "psycopg2"]) -> str:
+        return self.DB_URL.replace("postgresql://", f"postgresql+{driver}://")
 
 
 def get_settings() -> Settings:

@@ -5,15 +5,17 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncEngine
 
 
-def create_async_engine(url: str):
+def create_async_engine(dsn: str, echo: bool = False):
     return _create_async_engine(
-        url,
+        dsn,
+        echo=echo,
     )
 
 
-def create_sync_engine(url: str):
+def create_sync_engine(dsn: str, echo: bool = False):
     return _create_engine(
-        url,
+        dsn,
+        echo=echo,
     )
 
 
