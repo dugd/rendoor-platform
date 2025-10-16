@@ -4,6 +4,8 @@ from fastapi import FastAPI
 
 from src.core.logger import setup_loguru
 from src.core.config import get_settings
+
+from .routes import core_router
 from .middlewares import AccessLogMiddleware
 
 
@@ -26,6 +28,7 @@ setup_loguru(
     },
 )
 
+app.include_router(core_router)
 app.add_middleware(AccessLogMiddleware)
 
 
