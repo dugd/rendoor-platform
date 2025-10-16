@@ -3,13 +3,14 @@ import os
 from typing import TypedDict, AsyncIterator, AsyncGenerator
 
 from loguru import logger
-from fastapi import FastAPI, Depends, Request
+from fastapi import FastAPI, Depends
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine, async_sessionmaker
 from sqlalchemy import text
 
 from src.core.logger import setup_loguru
 from src.core.config import get_settings
-from src.storage.db import create_async_engine, create_async_sessionmaker
+from src.storage.db import init_db, is_db_initialized, shutdown_db, get_session
+from src.scheduler.app_celery import example_db_task
 
 from .routes import core_router
 from .middlewares import AccessLogMiddleware
@@ -25,20 +26,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("Starting up API...")
 
     settings = get_settings()
-    engine = create_async_engine(
-        settings.get_postgres_dsn("asyncpg"),
+    init_db(
+        dsn=settings.get_postgres_dsn("asyncpg"),
         echo=settings.DEBUG,
     )
-    session_factory = create_async_sessionmaker(engine)
 
     logger.info("API started.")
-
-    app.state.async_engine = engine
-    app.state.async_sessionmaker = session_factory
     yield
 
-    if engine is not None:
-        await engine.dispose()
+    if is_db_initialized() is not None:
+        await shutdown_db()
 
     logger.info("API stopped.")
 
@@ -65,31 +62,9 @@ setup_loguru(
 )
 
 
-async def get_async_session(request: Request) -> AsyncGenerator[AsyncSession]:
-    """FastAPI dependency that provides an AsyncSession per-request.
-
-    Usage:
-        async def endpoint(session: AsyncSession = Depends(get_async_session)):
-            ...
-    """
-    session_factory = getattr(request.app.state, "async_sessionmaker", None)
-    if session_factory is None:
-        # This can happen in tests or if startup didn't run
-        logger.warning(
-            "Creating session factory on-the-fly, this should not happen in production!",
-        )
-
-        settings = get_settings()
-        engine = create_async_engine(
-            settings.get_postgres_dsn("asyncpg"),
-            echo=settings.DEBUG,
-        )
-        session_factory = create_async_sessionmaker(engine)
-        request.app.state.async_engine = engine
-        request.app.state.async_sessionmaker = session_factory
-
-    async with session_factory() as session:
-        yield session
+async def get_async_session() -> AsyncGenerator[AsyncSession]:
+    async for s in get_session():
+        yield s
 
 
 app.include_router(core_router)
@@ -101,9 +76,14 @@ async def read_root():
     return {"message": "Hello World!"}
 
 
-# Optional: simple DB ping endpoint to validate wiring
 @app.get("/db-ping")
 async def db_ping(session: AsyncSession = Depends(get_async_session)):
     result = await session.execute(text("SELECT 1"))
     val = result.scalar()
     return {"ok": bool(val == 1)}
+
+
+@app.get("/worker-ping")
+async def worker_ping():
+    example_db_task.delay()
+    return {"status": "ok"}
