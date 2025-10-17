@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from .filter import PriceFilter, LocationFilter, ApartmentFilter
+
 
 @dataclass(frozen=True, eq=True)
 class Money:
@@ -25,3 +27,14 @@ class Address:
 class Image:
     url: str
     description: str | None
+
+
+__all__ = [
+    "Money",
+    "GeoLocation",
+    "Address",
+    "Image",
+    "PriceFilter",
+    "LocationFilter",
+    "ApartmentFilter",
+]
