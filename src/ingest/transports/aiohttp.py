@@ -1,6 +1,6 @@
 import aiohttp
 
-from .types import Response, Request
+from src.ingest.types import Response, Request
 
 
 class AioHttpTransport:

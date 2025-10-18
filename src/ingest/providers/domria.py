@@ -83,7 +83,7 @@ class DomRiaProvider:
 
 if __name__ == "__main__":
     import asyncio
-    from src.ingest.client import build_async_client
+    from src.ingest.clients import build_async_client
 
     async def main():
         client = await build_async_client("https://dom.ria.com")
