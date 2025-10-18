@@ -16,12 +16,14 @@ class ClientBuilder:
 
 async def build_async_client(base_url: str = "https://example.com") -> "AsyncClient":
     from src.ingest.transports import AioHttpTransport
-    from src.ingest.policies import RateLimiterPolicy
+    from src.ingest.policies import RetryPolicy, RateLimiterPolicy
 
     transport = AioHttpTransport(base_url=base_url)
     builder = ClientBuilder()
-    client = await builder.add_policy(RateLimiterPolicy(requests_per_second=5)).build(
-        transport
+    client = (
+        await builder.add_policy(RateLimiterPolicy(requests_per_second=5))
+        .add_policy(RetryPolicy(5, (408, 429, 500, 502, 503, 504)))
+        .build(transport)
     )
     return client
 
