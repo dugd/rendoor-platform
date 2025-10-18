@@ -91,4 +91,5 @@ def example_db_task(self) -> int:
             result = await session.execute(text("SELECT 1"))
             value = result.scalar()
             return value
+
     return asyncio.run(run_query())
