@@ -21,7 +21,7 @@ async def build_async_client(base_url: str = "https://example.com") -> "AsyncCli
     transport = AioHttpTransport(base_url=base_url)
     builder = ClientBuilder()
     client = (
-        await builder.add_policy(RateLimiterPolicy(requests_per_second=5))
+        await builder.add_policy(RateLimiterPolicy(rps=5))
         .add_policy(RetryPolicy(5, (408, 429, 500, 502, 503, 504)))
         .build(transport)
     )
