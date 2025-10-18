@@ -15,3 +15,10 @@ class Response:
     status: int
     content: bytes
     headers: dict[str, str]
+
+
+@dataclass(frozen=True)
+class Page:
+    items: list[str]
+    next_cursor: str | int | None = None
+    meta: dict[str, str] | None = None
