@@ -10,9 +10,6 @@ __pycache__/
 .env*
 !.env.example
 
-# Docker Compose local
-docker.compose.override.yml
-
 # Celery stuff
 celerybeat-schedule
 celerybeat-schedule-shm
