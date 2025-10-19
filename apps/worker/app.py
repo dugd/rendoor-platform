@@ -4,7 +4,7 @@ from loguru import logger
 from celery import Celery, signals
 from sqlalchemy import text
 
-from core.infra.config import get_settings
+from core.config import get_settings
 from core.infra.telemetry.logger import setup_loguru
 from core.infra.db import init_db, shutdown_db, get_sessionmaker_with_init
 

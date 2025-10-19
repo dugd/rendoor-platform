@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine, async_sessionmaker
 from sqlalchemy import text
 
 from core.infra.telemetry.logger import setup_loguru
-from core.infra.config import get_settings
+from core.config import get_settings
 from core.infra.db import init_db, is_db_initialized, shutdown_db, get_session
 from apps.worker.app import example_db_task
 

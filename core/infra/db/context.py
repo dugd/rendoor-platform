@@ -3,7 +3,7 @@ from typing import AsyncGenerator
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
-from core.infra.config import get_settings
+from core.config import get_settings
 from .connection import create_async_engine, create_async_sessionmaker
 
 _engine: AsyncEngine | None = None
