@@ -27,6 +27,7 @@ class AioHttpTransport:
             return Response(
                 status=resp.status,
                 content=content,
+                url=str(resp.url),
                 headers=dict(resp.headers),
             )
 

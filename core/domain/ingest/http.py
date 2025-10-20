@@ -14,6 +14,7 @@ class Request:
 class Response:
     status: int
     content: bytes
+    url: str
     headers: dict[str, str]
 
 

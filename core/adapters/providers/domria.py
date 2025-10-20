@@ -36,9 +36,8 @@ class DomRiaProvider:
         "mobileStatus": "1",
     }
 
-    def __init__(self, client: HttpClient, mapper):
+    def __init__(self, client: HttpClient):
         self._client = client
-        self._mapper = mapper
 
     async def search(
         self, filters: Mapping[str, Any] = None, cursor: str | int | None = None
@@ -76,8 +75,14 @@ class DomRiaProvider:
                         },
                     )
                 )
-                data = json.loads(resp.content)
-                yield self._mapper.map(data) if self._mapper else data
+                data = resp.content
+
+                yield RawListing(
+                    source_id="domria",
+                    external_id=_id,
+                    payload=json.loads(data),
+                    url=resp.url,
+                )
 
 
 if __name__ == "__main__":
@@ -86,7 +91,7 @@ if __name__ == "__main__":
 
     async def main():
         client = await build_async_client("https://dom.ria.com")
-        provider = DomRiaProvider(client=client, mapper=None)
+        provider = DomRiaProvider(client=client)
 
         page = await provider.search()
 

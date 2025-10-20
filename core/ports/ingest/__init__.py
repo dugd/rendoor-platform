@@ -1,26 +1,22 @@
-from typing import Protocol, Mapping, Any, AsyncIterable, Callable
+from typing import Protocol, Mapping, Any, AsyncIterable
 
-from core.domain.ingest import RawListing, Page, Request, Response
+from core.domain.ingest import RawListing, Page
 
-
-class HttpPolicy(Protocol):
-    async def send(self, req: Request, call_next: Callable) -> Response: ...
-
-
-class HttpTransport(Protocol):
-    async def send(self, req: Request) -> Response: ...
-    async def __aenter__(self): ...
-    async def __aexit__(self, exc_type, exc, tb): ...
-
-
-class HttpClient(Protocol):
-    async def send(self, req: "Request") -> "Response": ...
-    async def __aenter__(self): ...
-    async def __aexit__(self, exc_type, exc, tb): ...
+from .http import HttpPolicy, HttpTransport, HttpClient
 
 
 class Provider(Protocol):
+    """Provider interface for searching and iterating over listings."""
+
     async def search(
         self, filters: Mapping[str, Any] = None, cursor: str | int | None = None
     ) -> Page: ...
     async def iter(self, ids: list[str]) -> AsyncIterable[RawListing]: ...
+
+
+__all__ = [
+    "HttpPolicy",
+    "HttpTransport",
+    "HttpClient",
+    "Provider",
+]
