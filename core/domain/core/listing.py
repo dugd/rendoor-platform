@@ -7,10 +7,10 @@ class Listing:
         _id: int,
         source_id: str,
         external_id: str,
-        owner_id: str,
         url: str,
         title: str,
         fingerprint: str,
+        owner_id: str | None = None,
         price: Money | None = None,
         address: Address | None = None,
         location: GeoLocation | None = None,
@@ -23,10 +23,10 @@ class Listing:
         self.id = _id
         self.source_id = source_id
         self.external_id = external_id
-        self.owner_id = owner_id
         self.url = url
         self.title = title
         self.fingerprint = fingerprint
+        self.owner_id = owner_id
         self.price = price
         self.address = address
         self.location = location

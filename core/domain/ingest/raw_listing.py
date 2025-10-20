@@ -7,7 +7,8 @@ class RawListing:
         "_source_id",
         "_external_id",
         "_payload",
-        "_url",
+        "_schema_version",
+        "_fetch_url",
         "_fetched_at",
         "_frozen",
     )
@@ -18,7 +19,8 @@ class RawListing:
         external_id: str,
         payload: dict[str, Any],
         *,
-        url: str | None = None,
+        schema_version: str = "1.0",
+        fetch_url: str | None = None,
         fetched_at: datetime | None = None,
     ):
         if not source_id or not isinstance(source_id, str):
@@ -27,13 +29,16 @@ class RawListing:
             raise ValueError("external_id must be non-empty str")
         if not isinstance(payload, dict):
             raise TypeError("payload must be dict")
-        if url is not None and not isinstance(url, str):
+        if not schema_version or not isinstance(schema_version, str):
+            raise TypeError("schema_version must be non-empty str")
+        if fetch_url is not None and not isinstance(fetch_url, str):
             raise TypeError("url must be str or None")
 
         self._source_id = source_id.strip()
         self._external_id = external_id.strip()
         self._payload = dict(payload)
-        self._url = url
+        self._schema_version = schema_version.strip()
+        self._fetch_url = fetch_url
         self._fetched_at = fetched_at or datetime.now(timezone.utc)
         self._frozen = True
 
@@ -50,8 +55,12 @@ class RawListing:
         return self._payload
 
     @property
-    def url(self) -> str | None:
-        return self._url
+    def schema_version(self) -> str:
+        return self._schema_version
+
+    @property
+    def fetch_url(self) -> str | None:
+        return self._fetch_url
 
     @property
     def fetched_at(self) -> datetime:
@@ -65,14 +74,16 @@ class RawListing:
         self,
         *,
         payload: dict[str, Any] | None = None,
-        url: str | None | type(...) = ...,
+        schema_version: str | None = None,
+        fetch_url: str | None | type(...) = ...,
         fetched_at: datetime | None = None,
     ) -> "RawListing":
         return RawListing(
             source_id=self.source_id,
             external_id=self.external_id,
             payload=dict(payload) or dict(self._payload),
-            url=url or self._url,
+            schema_version=schema_version or self.schema_version,
+            fetch_url=fetch_url or self._fetch_url,
             fetched_at=fetched_at or self._fetched_at,
         )
 
@@ -82,7 +93,7 @@ class RawListing:
         super().__setattr__(key, value)
 
     def __repr__(self) -> str:
-        return f"RawListing(source='{self._source_id}', external_id='{self._external_id}', url='{self._url}')"
+        return f"RawListing(source='{self._source_id}', external_id='{self._external_id}', version='{self._schema_version}')"
 
 
 if __name__ == "__main__":
@@ -90,7 +101,8 @@ if __name__ == "__main__":
         source_id="source123",
         external_id="ext456",
         payload={"key": "value"},
-        url="http://example.com/listing/123",
+        fetch_url="http://example.com/listing/123",
         fetched_at=datetime(2023, 10, 1, 12, 0, tzinfo=timezone.utc),
     )
-    raw_listing._url = "http://example.com/new_listing/123"
+    print(raw_listing)
+    raw_listing._fetch_url = "http://example.com/new_listing/123"
