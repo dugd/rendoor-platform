@@ -20,13 +20,16 @@ class Address:
     state: str
     city: str
     street: str | None
+    building: str | None
+    district: str | None
     zip_code: str | None
+    country: str
 
 
 @dataclass(frozen=True, eq=True)
 class Image:
     url: str
-    description: str | None
+    order: int
 
 
 __all__ = [

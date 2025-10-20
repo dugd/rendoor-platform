@@ -81,26 +81,5 @@ class DomRiaProvider:
                     source_id="domria",
                     external_id=_id,
                     payload=json.loads(data),
-                    url=resp.url,
+                    fetch_url=resp.url,
                 )
-
-
-if __name__ == "__main__":
-    import asyncio
-    from core.infra.http.builder import build_async_client
-
-    async def main():
-        client = await build_async_client("https://dom.ria.com")
-        provider = DomRiaProvider(client=client)
-
-        page = await provider.search()
-
-        for _ in range(len(page.items) - 2):
-            page.items.pop()
-
-        print(page)
-
-        async for listing in provider.iter([item for item in page.items]):
-            print(listing)
-
-    asyncio.run(main())
