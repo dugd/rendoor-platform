@@ -4,7 +4,7 @@ x-logging: &default-logging
     options: { max-size: "10m", max-file: "3" }
 
 services:
-  web:
+  api:
     <<: *default-logging
     build:
       context: ..
@@ -17,7 +17,7 @@ services:
     env_file:
       - ../.env.example
     environment:
-      APP_SERVICE_NAME: web-app
+      APP_SERVICE_NAME: api-app
     ports:
       - ${EXPOSE_WEB_PORT:-8000}:8000
   celery-worker:
