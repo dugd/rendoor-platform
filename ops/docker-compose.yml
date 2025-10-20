@@ -8,7 +8,7 @@ services:
     <<: *default-logging
     build:
       context: ..
-      dockerfile: ops/docker/web.Dockerfile
+      dockerfile: ops/docker/api.Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
@@ -20,6 +20,23 @@ services:
       APP_SERVICE_NAME: api-app
     ports:
       - ${EXPOSE_WEB_PORT:-8000}:8000
+
+  telegram-bot:
+    <<: *default-logging
+    build:
+      context: ..
+      dockerfile: ops/docker/bot.Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ../.env.example
+    environment:
+      APP_SERVICE_NAME: telegram-bot
+    restart: unless-stopped
+
   celery-worker:
     <<: *default-logging
     build:
@@ -33,8 +50,25 @@ services:
     env_file:
       - ../.env.example
     environment:
-      APP_SERVICE_NAME: celery-
-    command: [ "celery", "-A", "apps.worker.app", "worker", "--loglevel=INFO" ]
+      APP_SERVICE_NAME: celery-worker
+    command: [ "celery", "-A", "apps.worker", "worker", "--loglevel=INFO" ]
+
+  celery-beat:
+    <<: *default-logging
+    build:
+      context: ..
+      dockerfile: ops/docker/worker.Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ../.env.example
+    environment:
+      APP_SERVICE_NAME: celery-beat
+    command: [ "celery", "-A", "apps.worker", "beat", "--loglevel=INFO" ]
+
   postgres:
     <<: *default-logging
     image: postgres:17
@@ -53,6 +87,7 @@ services:
       retries: 10
       start_period: 10s
     restart: unless-stopped
+
   redis:
     <<: *default-logging
     image: redis:8.2

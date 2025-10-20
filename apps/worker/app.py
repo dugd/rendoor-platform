@@ -93,3 +93,6 @@ def example_db_task(self) -> int:
             return value
 
     return asyncio.run(run_query())
+
+
+__all__ = ("celery",)

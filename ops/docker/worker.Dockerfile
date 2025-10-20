@@ -18,4 +18,4 @@ RUN poetry config virtualenvs.create false && poetry install --no-interaction --
 COPY ./core ./core
 COPY ./apps/worker ./apps/worker
 
-CMD ["celery", "-A", "apps.worker.app", "worker", "--loglevel=INFO", "--concurrency=2"]
+CMD ["celery", "-A", "apps.worker", "worker", "--loglevel=INFO", "--concurrency=2"]

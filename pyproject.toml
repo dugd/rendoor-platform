@@ -3,10 +3,10 @@ name = "rendoor"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "Dugd_Nitkin",email = "dugd.nitkin@gmail.com"}
+    { name = "Dugd_Nitkin", email = "dugd.nitkin@gmail.com" }
 ]
 readme = "README.md"
-requires-python = ">=3.13,<4.0"
+requires-python = ">=3.13,<3.14"
 dependencies = [
     "fastapi (>=0.116.1,<0.117.0)",
     "uvicorn (>=0.35.0,<0.36.0)",
@@ -19,7 +19,8 @@ dependencies = [
     "curl-cffi (>=0.13.0,<0.14.0)",
     "flower (>=2.0.1,<3.0.0)",
     "loguru (>=0.7.3,<0.8.0)",
-    "aiohttp (>=3.13.1,<4.0.0)",
+    "aiohttp (>=3.9.0,<3.13.0)",
+    "aiogram (>=3.22.0,<4.0.0)",
 ]
 
 [tool.poetry]

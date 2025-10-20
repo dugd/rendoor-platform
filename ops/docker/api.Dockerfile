@@ -16,7 +16,7 @@ COPY pyproject.toml poetry.lock* ./
 RUN poetry config virtualenvs.create false && poetry install --no-interaction --without dev
 
 COPY ./core ./core
-COPY ./apps/web ./apps/web
+COPY ./apps/api ./apps/api
 
 EXPOSE 8000
-CMD ["uvicorn", "apps.web.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
+CMD ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]

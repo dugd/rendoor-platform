@@ -23,6 +23,8 @@ class Settings(BaseSettings):
 
     BROKER_URL: str
 
+    TELEGRAM_BOT_TOKEN: str
+
     def get_postgres_dsn(self, driver: Literal["asyncpg", "psycopg2"]) -> str:
         return self.DB_URL.replace("postgresql://", f"postgresql+{driver}://")
 
