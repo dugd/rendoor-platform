@@ -22,7 +22,7 @@ class SourceORM(Model):
     __tablename__ = "sources"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    code: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    code: Mapped[str] = mapped_column(String(32), unique=True)
     name: Mapped[str] = mapped_column(String(128))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -35,7 +35,7 @@ class RawListingORM(Model):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     source_id: Mapped[int] = mapped_column(
-        ForeignKey("sources.id", ondelete="RESTRICT"), index=True
+        ForeignKey("sources.id", ondelete="RESTRICT")
     )
     external_id: Mapped[str] = mapped_column(String(128))
 
@@ -64,7 +64,7 @@ class OwnerORM(Model):
     __tablename__ = "owners"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    fingerprint: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    fingerprint: Mapped[str] = mapped_column(String(64), unique=True)
 
     name: Mapped[str | None] = mapped_column(String(256))
     owner_type: Mapped[str] = mapped_column(String(32), default="unknown", index=True)
@@ -100,11 +100,11 @@ class ListingORM(Model):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     source_id: Mapped[int] = mapped_column(
-        ForeignKey("sources.id", ondelete="RESTRICT"), index=True
+        ForeignKey("sources.id", ondelete="RESTRICT")
     )
     external_id: Mapped[str] = mapped_column(String(128))
     owner_id: Mapped[int | None] = mapped_column(
-        ForeignKey("owners.id", ondelete="SET NULL"), index=True
+        ForeignKey("owners.id", ondelete="SET NULL")
     )
 
     url: Mapped[str] = mapped_column(Text)
@@ -127,7 +127,7 @@ class ListingORM(Model):
     )
 
     # Apartment details
-    room_count: Mapped[int | None] = mapped_column(Integer, index=True)
+    room_count: Mapped[int | None] = mapped_column(Integer)
     area: Mapped[float | None] = mapped_column(Float)
     floor: Mapped[int | None] = mapped_column(Integer)
     total_floors: Mapped[int | None] = mapped_column(Integer)
@@ -180,7 +180,7 @@ class ListingPhotoORM(Model):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     listing_id: Mapped[int] = mapped_column(
-        ForeignKey("listings.id", ondelete="CASCADE"), index=True
+        ForeignKey("listings.id", ondelete="CASCADE")
     )
     url: Mapped[str] = mapped_column(Text)
     order: Mapped[int] = mapped_column(Integer, default=0)
@@ -193,7 +193,7 @@ class ListingPriceHistoryORM(Model):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     listing_id: Mapped[int] = mapped_column(
-        ForeignKey("listings.id", ondelete="CASCADE"), index=True
+        ForeignKey("listings.id", ondelete="CASCADE")
     )
     price_amount: Mapped[float] = mapped_column(Float)
     price_currency: Mapped[str] = mapped_column(String(8))
