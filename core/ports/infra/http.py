@@ -1,6 +1,6 @@
-from typing import Protocol, Mapping, Any, AsyncIterable, Callable
+from typing import Protocol, Callable
 
-from core.domain.ingest import RawListing, Page, Request, Response
+from core.domain.ingest import Request, Response
 
 
 class HttpPolicy(Protocol):
@@ -19,8 +19,8 @@ class HttpClient(Protocol):
     async def __aexit__(self, exc_type, exc, tb): ...
 
 
-class Provider(Protocol):
-    async def search(
-        self, filters: Mapping[str, Any] = None, cursor: str | int | None = None
-    ) -> Page: ...
-    async def iter(self, ids: list[str]) -> AsyncIterable[RawListing]: ...
+__all__ = [
+    "HttpPolicy",
+    "HttpTransport",
+    "HttpClient",
+]

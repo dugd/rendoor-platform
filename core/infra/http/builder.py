@@ -1,4 +1,4 @@
-from core.ports.ingest import HttpClient, HttpPolicy, HttpTransport
+from core.ports.infra import HttpClient, HttpPolicy, HttpTransport
 from core.infra.http.client import BaseClient
 
 

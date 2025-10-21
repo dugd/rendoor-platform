@@ -1,4 +1,4 @@
-from core.domain.value import PriceFilter, LocationFilter, ApartmentFilter
+from .value import PriceFilter, LocationFilter, ApartmentFilter
 
 
 class Filter:

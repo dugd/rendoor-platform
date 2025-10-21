@@ -1,5 +1,5 @@
 from core.domain.ingest import Request, Response
-from core.ports.ingest import HttpTransport, HttpPolicy
+from core.ports.infra import HttpTransport, HttpPolicy
 
 
 class BaseClient:

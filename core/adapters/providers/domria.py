@@ -2,7 +2,7 @@ import json
 from typing import Mapping, Any, AsyncIterable
 
 from core.domain.ingest import RawListing, Page, Request
-from core.ports.ingest import HttpClient
+from core.ports import HttpClient
 
 
 class DomRiaProvider:
@@ -36,12 +36,17 @@ class DomRiaProvider:
         "mobileStatus": "1",
     }
 
-    def __init__(self, client: HttpClient, mapper):
+    def __init__(self, client: HttpClient):
         self._client = client
-        self._mapper = mapper
+        self._source_code = "domria"
+
+    @property
+    def source_code(self) -> str:
+        """Returns the source code identifier."""
+        return self._source_code
 
     async def search(
-        self, filters: Mapping[str, Any] = None, cursor: str | int | None = None
+        self, filters: Mapping[str, Any] | None = None, cursor: str | int | None = None
     ) -> Page:
         if cursor is None:
             cursor = 0
@@ -63,7 +68,12 @@ class DomRiaProvider:
             items=items, next_cursor=next_cursor, meta={"count": str(data["count"])}
         )
 
-    async def iter(self, ids: list[str]) -> AsyncIterable[RawListing]:
+    async def fetch(self, ids: list[str]) -> AsyncIterable[RawListing]:
+        """
+        Fetch full listing data by IDs.
+
+        Renamed from 'iter' to 'fetch' to match the ListingProvider protocol.
+        """
         async with self._client:
             for _id in ids:
                 resp = await self._client.send(
@@ -76,26 +86,12 @@ class DomRiaProvider:
                         },
                     )
                 )
-                data = json.loads(resp.content)
-                yield self._mapper.map(data) if self._mapper else data
+                data = resp.content
 
+                yield RawListing(
+                    source_code=self._source_code,
+                    external_id=_id,
+                    payload=json.loads(data),
+                    fetch_url=resp.url,
+                )
 
-if __name__ == "__main__":
-    import asyncio
-    from core.infra.http.builder import build_async_client
-
-    async def main():
-        client = await build_async_client("https://dom.ria.com")
-        provider = DomRiaProvider(client=client, mapper=None)
-
-        page = await provider.search()
-
-        for _ in range(len(page.items) - 2):
-            page.items.pop()
-
-        print(page)
-
-        async for listing in provider.iter([item for item in page.items]):
-            print(listing)
-
-    asyncio.run(main())
