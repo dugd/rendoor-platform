@@ -1,15 +1,20 @@
 from core.domain.ingest import RawListing
-from core.domain.core import Listing
-from core.domain.value import Money, Address, GeoLocation, Image
+from core.domain.listing import Listing
+from core.domain.listing.value import Money, Address, GeoLocation, Image
 import hashlib
 from typing import Any
 
 
 class DomRiaNormalizer:
     def __init__(self) -> None:
-        self.source_id = "domria"
+        self._source_code = "domria"
         self.photo_base_url = "https://cdn.riastatic.com/"
         self.base_domain = "https://dom.ria.com"
+
+    @property
+    def source_code(self) -> str:
+        """Returns the source code identifier this normalizer handles."""
+        return self._source_code
 
     async def normalize(self, raw: RawListing) -> Listing:
         payload = raw.payload
@@ -43,10 +48,10 @@ class DomRiaNormalizer:
 
         photos = self._extract_photos(payload)
 
-        # NOTE: id=-1
+        # NOTE: listing_id=-1 (not yet persisted)
         return Listing(
-            _id=-1,
-            source_id=raw.source_id,
+            listing_id=-1,
+            source_code=raw.source_code,
             external_id=external_id,
             url=url,
             title=title,

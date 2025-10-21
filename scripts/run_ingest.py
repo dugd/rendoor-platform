@@ -18,7 +18,7 @@ if __name__ == "__main__":
 
         print(page)
 
-        async for listing in provider.iter([item for item in page.items]):
+        async for listing in provider.fetch([item for item in page.items]):
             print(listing)
             normalized = await normalizer.normalize(listing)
             print(normalized)

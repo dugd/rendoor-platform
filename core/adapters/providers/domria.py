@@ -2,7 +2,7 @@ import json
 from typing import Mapping, Any, AsyncIterable
 
 from core.domain.ingest import RawListing, Page, Request
-from core.ports.ingest import HttpClient
+from core.ports import HttpClient
 
 
 class DomRiaProvider:
@@ -38,6 +38,12 @@ class DomRiaProvider:
 
     def __init__(self, client: HttpClient):
         self._client = client
+        self._source_code = "domria"
+
+    @property
+    def source_code(self) -> str:
+        """Returns the source code identifier."""
+        return self._source_code
 
     async def search(
         self, filters: Mapping[str, Any] = None, cursor: str | int | None = None
@@ -62,7 +68,12 @@ class DomRiaProvider:
             items=items, next_cursor=next_cursor, meta={"count": str(data["count"])}
         )
 
-    async def iter(self, ids: list[str]) -> AsyncIterable[RawListing]:
+    async def fetch(self, ids: list[str]) -> AsyncIterable[RawListing]:
+        """
+        Fetch full listing data by IDs.
+
+        Renamed from 'iter' to 'fetch' to match the ListingProvider protocol.
+        """
         async with self._client:
             for _id in ids:
                 resp = await self._client.send(
@@ -78,8 +89,9 @@ class DomRiaProvider:
                 data = resp.content
 
                 yield RawListing(
-                    source_id="domria",
+                    source_code=self._source_code,
                     external_id=_id,
                     payload=json.loads(data),
                     fetch_url=resp.url,
                 )
+
