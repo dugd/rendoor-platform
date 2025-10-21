@@ -46,7 +46,7 @@ class DomRiaProvider:
         return self._source_code
 
     async def search(
-        self, filters: Mapping[str, Any] = None, cursor: str | int | None = None
+        self, filters: Mapping[str, Any] | None = None, cursor: str | int | None = None
     ) -> Page:
         if cursor is None:
             cursor = 0
