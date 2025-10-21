@@ -169,9 +169,7 @@ class ListingORM(Model):
         UniqueConstraint("source_id", "external_id", name="uq_listing_src_ext"),
         Index("ix_listing_fingerprint_status", "fingerprint", "status"),
         Index("ix_listing_city_price", "address_city", "price_amount"),
-        Index("ix_listing_city_rooms", "address_city", "room_count"),
         Index("ix_listing_status_updated", "status", "updated_at"),
-        Index("ix_listing_location", "location", postgresql_using="gist"),
     )
 
 

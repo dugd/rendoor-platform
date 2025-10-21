@@ -1,4 +1,4 @@
-from ports.infra.http import HttpPolicy, HttpTransport, HttpClient
+from .http import HttpPolicy, HttpTransport, HttpClient
 
 
 __all__ = [
