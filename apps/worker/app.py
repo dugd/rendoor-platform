@@ -2,11 +2,10 @@ import os
 
 from loguru import logger
 from celery import Celery, signals
-from sqlalchemy import text
 
 from core.config import get_settings
 from core.infra.telemetry.logger import setup_loguru
-from core.infra.db import init_db, shutdown_db, get_sessionmaker_with_init
+from core.infra.db import init_db, shutdown_db
 
 settings = get_settings()
 
@@ -45,7 +44,7 @@ celery.conf.update(
 def _celery_setup_logging(**kwargs):
     setup_loguru(
         service=os.environ.get("SERVICE_NAME", "celery-app"),
-        level=get_settings().LOGGING_LEVEL,
+        level=settings.LOGGING_LEVEL,
     )
 
 
@@ -53,9 +52,9 @@ def _celery_setup_logging(**kwargs):
 def _celery_worker_process_init(**kwargs):
     setup_loguru(
         service=os.environ.get("SERVICE_NAME", "celery-app"),
-        level=get_settings().LOGGING_LEVEL,
+        level=settings.LOGGING_LEVEL,
     )
-    init_db(dsn=get_settings().get_postgres_dsn("asyncpg"), echo=settings.DEBUG)
+    init_db(dsn=settings.get_postgres_dsn("asyncpg"), echo=settings.DEBUG)
 
 
 @signals.worker_shutdown.connect
@@ -80,19 +79,4 @@ def on_task_fail(sender=None, task_id=None, **kw):
     logger.bind(task_id=task_id, task_name=sender.name).exception("Task failed")
 
 
-@celery.task(bind=True, name="example_db_task")
-def example_db_task(self) -> int:
-    logger.info(self.request.id)
-    sm = get_sessionmaker_with_init()
-    import asyncio
-
-    async def run_query():
-        async with sm() as session:
-            result = await session.execute(text("SELECT 1"))
-            value = result.scalar()
-            return value
-
-    return asyncio.run(run_query())
-
-
-__all__ = ("celery",)
+__all__ = ["celery"]

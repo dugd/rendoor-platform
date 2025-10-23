@@ -11,12 +11,12 @@ router = APIRouter(
 
 
 @router.get("/healtz", response_model=HealthzResponse, tags=["diagnostic"])
-def healtz():
+async def healtz():
     return HealthzResponse(status="ok")
 
 
 @router.get("/timestamp", response_model=TimestampResponse, tags=["diagnostic"])
-def timestamp():
+async def timestamp():
     now = datetime.now(timezone.utc).isoformat()
     return TimestampResponse(timestamp=now)
 
