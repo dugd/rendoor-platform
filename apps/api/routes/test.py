@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
 from apps.api.depends import get_async_session
-from apps.worker import send_notification, example_db_task
+from apps.worker import send_notification, example_db_task, send_listing_notification
 
 
 router = APIRouter(
@@ -32,6 +32,12 @@ async def worker_ping():
 async def send_message(message: str):
     send_notification.delay(message)
     return {"status": "message sent"}
+
+
+@router.post("/send-listing")
+async def send_listing(listing_id: int):
+    send_listing_notification.delay(listing_id)
+    return {"status": "listing notification sent", "listing_id": listing_id}
 
 
 __all__ = [
