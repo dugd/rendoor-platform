@@ -1,3 +1,4 @@
+import asyncio
 from aiogram import Bot
 
 from core.config import get_settings
@@ -13,12 +14,21 @@ from ui.bot.formatters.listing_formatter import TelegramListingFormatter
 class Container:
     def __init__(self):
         self._bot = None
-        self._notifier = None
         self._formatter = None
+        self._loop = None
+
+    def get_or_create_loop(self) -> asyncio.AbstractEventLoop:
+        """Get or create event loop for this worker process"""
+        if self._loop is None or self._loop.is_closed():
+            self._loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self._loop)
+        return self._loop
 
     @property
     def bot(self) -> Bot:
-        if not self._bot:
+        """Lazy initialization of bot with proper event loop"""
+        if self._bot is None:
+            self.get_or_create_loop()
             self._bot = Bot(token=get_settings().TELEGRAM_BOT_TOKEN)
         return self._bot
 
@@ -30,19 +40,23 @@ class Container:
 
     @property
     def notifier(self) -> Notifier:
-        if not self._notifier:
-            self._notifier = TelegramNotifier(
-                bot=self.bot,
-                formatter=self.formatter,
-                admin_chat_id=ChatId(get_settings().TELEGRAM_ADMIN_CHAT_ID),
-            )
-        return self._notifier
+        return TelegramNotifier(
+            bot=self.bot,
+            formatter=self.formatter,
+            admin_chat_id=ChatId(get_settings().TELEGRAM_ADMIN_CHAT_ID),
+        )
 
     async def listing_repository(self) -> IListingRepository:
         """Create a new listing repository instance with a fresh session"""
         sessionmaker = get_sessionmaker()
         session = sessionmaker()
         return ListingRepository(session)
+
+    def cleanup(self):
+        """Cleanup resources when worker shuts down"""
+        if self._bot and self._loop and not self._loop.is_closed():
+            self._loop.run_until_complete(self._bot.session.close())
+            self._bot = None
 
 
 _container: Container | None = None

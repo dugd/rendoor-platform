@@ -1,4 +1,3 @@
-import asyncio
 
 from core.domain.notify import ChatId
 from core.config import get_settings
@@ -10,25 +9,25 @@ from ..di import get_container
 @celery.task(bind=True)
 def send_notification(self, message: str):
     """Send notification to admin chat"""
+    container = get_container()
+    loop = container.get_or_create_loop()
 
     async def _send():
         chat_id = get_settings().TELEGRAM_ADMIN_CHAT_ID
-
-        container = get_container()
         notifier = container.notifier
         await notifier.send_text(ChatId(chat_id), message)
 
-    asyncio.run(_send())
+    loop.run_until_complete(_send())
 
 
 @celery.task(bind=True)
 def send_listing_notification(self, listing_id: int):
     """Send listing notification to admin chat"""
+    container = get_container()
+    loop = container.get_or_create_loop()
 
     async def _send():
         chat_id = get_settings().TELEGRAM_ADMIN_CHAT_ID
-
-        container = get_container()
         notifier = container.notifier
         listing_repo = await container.listing_repository()
 
@@ -38,4 +37,4 @@ def send_listing_notification(self, listing_id: int):
 
         await notifier.send_listing(ChatId(chat_id), listing)
 
-    asyncio.run(_send())
+    loop.run_until_complete(_send())

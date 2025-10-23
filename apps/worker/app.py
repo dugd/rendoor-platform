@@ -1,4 +1,5 @@
 import os
+import asyncio
 
 from loguru import logger
 from celery import Celery, signals
@@ -6,6 +7,8 @@ from celery import Celery, signals
 from core.config import get_settings
 from core.infra.telemetry.logger import setup_loguru
 from core.infra.db import init_db, shutdown_db
+from .di import get_container
+
 
 settings = get_settings()
 
@@ -50,18 +53,30 @@ def _celery_setup_logging(**kwargs):
 
 @signals.worker_process_init.connect
 def _celery_worker_process_init(**kwargs):
+    """Initialize resources per worker process"""
     setup_loguru(
         service=os.environ.get("SERVICE_NAME", "celery-app"),
         level=settings.LOGGING_LEVEL,
     )
     init_db(dsn=settings.get_postgres_dsn("asyncpg"), echo=settings.DEBUG)
 
+    container = get_container()
+    container.get_or_create_loop()
+    logger.info("Container initialized for worker process")
+
 
 @signals.worker_shutdown.connect
 def _celery_worker_process_shutdown(**kwargs):
-    import asyncio
+    """Cleanup resources when worker shuts down"""
+    from .di import get_container
 
-    asyncio.run(shutdown_db())
+    async def cleanup():
+        await shutdown_db()
+        container = get_container()
+        container.cleanup()
+        logger.info("Container cleaned up")
+
+    asyncio.run(cleanup())
 
 
 @signals.task_prerun.connect
