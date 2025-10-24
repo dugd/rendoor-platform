@@ -7,6 +7,11 @@ from core.ports.repos import IListingRepository
 from core.domain.notify import ChatId
 from core.infra.db.context import get_sessionmaker
 from core.infra.repos import ListingRepository
+from core.adapters.providers.domria import DomRiaProvider
+from core.adapters.normalizers.domria import DomRiaNormalizer
+from core.adapters.loaders.database import DatabaseListingLoader
+from core.adapters.etl.domria_pipeline import DomRiaETLPipeline
+from core.infra.http.builder import build_async_client
 from ui.bot.adapters.telegram_notifier import TelegramNotifier
 from ui.bot.formatters.listing_formatter import TelegramListingFormatter
 
@@ -45,6 +50,17 @@ class Container:
             formatter=self.formatter,
             admin_chat_id=ChatId(get_settings().TELEGRAM_ADMIN_CHAT_ID),
         )
+
+    @property
+    async def domria_etl_pipeline(self):
+        client = await build_async_client("https://dom.ria.com")
+        provider = DomRiaProvider(client)
+        normalizer = DomRiaNormalizer()
+        sessionmaker = get_sessionmaker()
+        session = sessionmaker()
+        loader = DatabaseListingLoader(session)
+
+        return DomRiaETLPipeline(provider, normalizer, loader)
 
     async def listing_repository(self) -> IListingRepository:
         """Create a new listing repository instance with a fresh session"""

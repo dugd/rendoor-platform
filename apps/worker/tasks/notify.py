@@ -1,4 +1,3 @@
-
 from core.domain.notify import ChatId
 from core.config import get_settings
 
