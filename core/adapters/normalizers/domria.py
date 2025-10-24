@@ -8,7 +8,7 @@ from typing import Any
 class DomRiaNormalizer:
     def __init__(self) -> None:
         self._source_code = "domria"
-        self.photo_base_url = "https://cdn.riastatic.com/"
+        self.photo_base_url = "https://cdn.riastatic.com"
         self.base_domain = "https://dom.ria.com"
 
     @property
@@ -71,7 +71,7 @@ class DomRiaNormalizer:
         """Builds full URL from beautiful_url using base domain"""
         if not beautiful_url:
             return ""
-        return f"{self.base_domain}/{beautiful_url}"
+        return f"{self.base_domain}/uk/{beautiful_url}"
 
     def _build_title(self, payload: dict[str, Any]) -> str:
         """Builds a title for the listing based on available fields."""
@@ -175,6 +175,12 @@ class DomRiaNormalizer:
 
         return None
 
+    def _transform_file_path(self, file_path: str, size: str = "xl") -> str:
+        """Transforms a file path to a full URL."""
+        extension = file_path.split(".")[-1]
+        file_path = file_path.replace(f".{extension}", f"{size}.{extension}")
+        return file_path
+
     def _extract_photos(self, payload: dict[str, Any]) -> list[Image]:
         """Extracts photos from the payload and returns a list of Image objects."""
         photos_dict = payload.get("photos", {})
@@ -189,7 +195,8 @@ class DomRiaNormalizer:
         for photo_data in sorted_photos:
             file_path = photo_data.get("file")
             if file_path:
-                url = f"{self.photo_base_url}{file_path}"
+                file_path = self._transform_file_path(file_path, size="xl")
+                url = f"{self.photo_base_url}/photos/{file_path}"
                 photos.append(
                     Image(
                         url=url,

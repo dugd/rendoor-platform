@@ -24,21 +24,24 @@ class TelegramNotifier:
         """Send listing info message using ListingFormatter."""
         formatted = self._formatter.format_listing(listing)
 
-        # if formatted.get("photos"):
-        #     result = await self._bot.send_media_group(
-        #         chat_id=chat_id.value, media=formatted["photos"]
-        #     )
-        #     msg_id = result[0].message_id
-        # else:
-        result = await self._bot.send_message(
-            chat_id=chat_id.value,
-            text=formatted["text"],
-            reply_markup=formatted.get("keyboard"),
-            parse_mode="HTML",
-        )
-        msg_id = result.message_id
+        if formatted.get("photos"):
+            photo = formatted["photos"][0]  # First photo with caption
+            result = await self._bot.send_photo(
+                chat_id=chat_id.value,
+                photo=photo.media,
+                caption=formatted["text"],
+                reply_markup=formatted.get("keyboard"),
+                parse_mode="HTML",
+            )
+        else:
+            result = await self._bot.send_message(
+                chat_id=chat_id.value,
+                text=formatted["text"],
+                reply_markup=formatted.get("keyboard"),
+                parse_mode="HTML",
+            )
 
-        return MessageId(msg_id)
+        return MessageId(result.message_id)
 
     async def send_text(self, chat_id: ChatId, text: str) -> MessageId:
         """Send raw text message."""
