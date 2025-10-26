@@ -65,10 +65,12 @@ def process_outbox(batch: int = 100):
                     continue
                 try:
                     await handler(container, int(m["aggregate_id"]))
+                    logger.info("Processed outbox message {id}", id=m["id"])
                     await _ack(session, m["id"])
                 except Exception:
                     logger.exception("Error processing outbox message {id}", id=m["id"])
                     await _nack(session, m["id"])
+            await session.commit()
         return msgs
 
     result = loop.run_until_complete(_run())
