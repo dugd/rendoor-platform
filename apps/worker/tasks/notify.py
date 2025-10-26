@@ -54,7 +54,7 @@ def process_outbox(batch: int = 100):
         async with sessionmaker() as session:
             msgs = await _claim_batch(session, batch)
             if not msgs:
-                return 0
+                return []
             for m in msgs:
                 handler = HANDLERS.get(m["message_type"])
                 if not handler:
@@ -71,7 +71,7 @@ def process_outbox(batch: int = 100):
                     logger.exception("Error processing outbox message {id}", id=m["id"])
                     await _nack(session, m["id"])
             await session.commit()
-        return msgs
+            return msgs
 
     result = loop.run_until_complete(_run())
 
