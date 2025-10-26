@@ -17,7 +17,7 @@ def init_db(*, dsn: str | None = None, echo: bool | None = None) -> None:
         return
     settings = get_settings()
     dsn = dsn or settings.get_postgres_dsn("asyncpg")
-    echo = settings.DEBUG if echo is None else echo
+    echo = echo or False # TODO: make configurable
 
     _engine = create_async_engine(dsn, echo=echo)
     _sessionmaker = create_async_sessionmaker(_engine)

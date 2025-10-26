@@ -5,29 +5,14 @@ from loguru import logger
 from celery import Celery, signals
 
 from core.config import get_settings
-from core.infra.telemetry.logger import setup_loguru
+from core.infra.telemetry.logger import configure_logger
 from core.infra.db import init_db, shutdown_db
 from .di import get_container
 
 
 settings = get_settings()
 
-setup_loguru(
-    service=os.environ.get("APP_SERVICE_NAME", "celery-app"),
-    level=get_settings().LOGGING_LEVEL,
-    sink="text",  # TODO: switch via env
-    settings={
-        "backtrace": True,
-        "enqueue": True,
-        "diagnose": True,
-    }
-    if get_settings().DEBUG
-    else {
-        "backtrace": False,
-        "enqueue": True,
-        "diagnose": False,
-    },
-)
+configure_logger("celery-app")
 
 celery = Celery(
     "job",
@@ -45,20 +30,14 @@ celery.conf.update(
 
 @signals.setup_logging.connect
 def _celery_setup_logging(**kwargs):
-    setup_loguru(
-        service=os.environ.get("SERVICE_NAME", "celery-app"),
-        level=settings.LOGGING_LEVEL,
-    )
+    configure_logger("celery-app")
 
 
 @signals.worker_process_init.connect
 def _celery_worker_process_init(**kwargs):
     """Initialize resources per worker process"""
-    setup_loguru(
-        service=os.environ.get("SERVICE_NAME", "celery-app"),
-        level=settings.LOGGING_LEVEL,
-    )
-    init_db(dsn=settings.get_postgres_dsn("asyncpg"), echo=settings.DEBUG)
+    configure_logger("celery-app")
+    init_db(dsn=settings.get_postgres_dsn("asyncpg"))
 
     container = get_container()
     container.get_or_create_loop()

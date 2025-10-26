@@ -15,9 +15,6 @@ class Settings(BaseSettings):
 
     ENV: str = "development"
     DEBUG: bool = True
-    LOGGING_LEVEL: str = "INFO"
-
-    SERVICE_NAME: str = "my-service"
 
     DB_URL: str
 

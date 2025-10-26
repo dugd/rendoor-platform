@@ -58,7 +58,9 @@ def process_outbox(batch: int = 100):
             for m in msgs:
                 handler = HANDLERS.get(m["message_type"])
                 if not handler:
-                    logger.warning("No handler for message type {type}", type=m["message_type"])
+                    logger.warning(
+                        "No handler for message type {type}", type=m["message_type"]
+                    )
                     await _nack(session, m["id"])
                     continue
                 try:
