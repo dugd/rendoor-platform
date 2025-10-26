@@ -14,13 +14,12 @@ async def notify_admin_text(container, message: str):
 async def notify_admin_listing(container, listing_id: int):
     chat_id = get_settings().TELEGRAM_ADMIN_CHAT_ID
     notifier = container.notifier
-    listing_repo = await container.listing_repository()
+    async with container.listing_repository() as listing_repo:
+        listing = await listing_repo.get_by_id(listing_id)
+        if not listing:
+            raise ValueError(f"Listing with id {listing_id} not found")
 
-    listing = await listing_repo.get_by_id(listing_id)
-    if not listing:
-        raise ValueError(f"Listing with id {listing_id} not found")
-
-    await notifier.send_listing(ChatId(chat_id), listing)
+        await notifier.send_listing(ChatId(chat_id), listing)
 
 
 def _run_coro(container, coro):

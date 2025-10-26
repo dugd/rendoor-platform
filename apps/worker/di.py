@@ -1,4 +1,6 @@
 import asyncio
+from typing import AsyncGenerator
+from contextlib import asynccontextmanager
 from aiogram import Bot
 
 from core.config import get_settings
@@ -62,11 +64,12 @@ class Container:
 
         return DomRiaETLPipeline(provider, normalizer, loader)
 
-    async def listing_repository(self) -> IListingRepository:
+    @asynccontextmanager
+    async def listing_repository(self) -> AsyncGenerator[IListingRepository, None]:
         """Create a new listing repository instance with a fresh session"""
-        sessionmaker = get_sessionmaker()
-        session = sessionmaker()
-        return ListingRepository(session)
+        Session = get_sessionmaker()
+        async with Session() as session:
+            yield ListingRepository(session)
 
     def cleanup(self):
         """Cleanup resources when worker shuts down"""
