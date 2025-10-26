@@ -153,7 +153,9 @@ class DatabaseListingLoader:
             "total_floors": listing.total_floors,
             "description": listing.description,
             "owner_name": listing.owner_info.name if listing.owner_info else None,
-            "owner_type_declared": listing.owner_info.owner_type if listing.owner_info else None,
+            "owner_type_declared": listing.owner_info.owner_type
+            if listing.owner_info
+            else None,
             "status": listing.status,
             "is_verified": listing.is_verified,
             "view_count": listing.view_count,
@@ -301,36 +303,52 @@ class DatabaseListingLoader:
                 point = Point(listing.location.longitude, listing.location.latitude)
                 location_wkb = from_shape(point, srid=4326)
 
-            values.append({
-                "source_id": source.id,
-                "external_id": listing.external_id,
-                "owner_id": listing.owner_id,
-                "url": listing.url,
-                "title": listing.title,
-                "fingerprint": listing.fingerprint,
-                "price_amount": listing.price.amount if listing.price else None,
-                "price_currency": listing.price.currency if listing.price else None,
-                "address_country": listing.address.country if listing.address else None,
-                "address_state": listing.address.state if listing.address else None,
-                "address_city": listing.address.city if listing.address else None,
-                "address_district": listing.address.district if listing.address else None,
-                "address_street": listing.address.street if listing.address else None,
-                "address_building": listing.address.building if listing.address else None,
-                "address_zip": listing.address.zip_code if listing.address else None,
-                "location": location_wkb,
-                "room_count": listing.room_count,
-                "area": listing.area,
-                "floor": listing.floor,
-                "total_floors": listing.total_floors,
-                "description": listing.description,
-                "owner_name": listing.owner_info.name if listing.owner_info else None,
-                "owner_type_declared": listing.owner_info.owner_type if listing.owner_info else None,
-                "status": listing.status,
-                "is_verified": listing.is_verified,
-                "view_count": listing.view_count,
-                "first_seen_at": listing.first_seen_at,
-                "last_seen_at": listing.last_seen_at,
-            })
+            values.append(
+                {
+                    "source_id": source.id,
+                    "external_id": listing.external_id,
+                    "owner_id": listing.owner_id,
+                    "url": listing.url,
+                    "title": listing.title,
+                    "fingerprint": listing.fingerprint,
+                    "price_amount": listing.price.amount if listing.price else None,
+                    "price_currency": listing.price.currency if listing.price else None,
+                    "address_country": listing.address.country
+                    if listing.address
+                    else None,
+                    "address_state": listing.address.state if listing.address else None,
+                    "address_city": listing.address.city if listing.address else None,
+                    "address_district": listing.address.district
+                    if listing.address
+                    else None,
+                    "address_street": listing.address.street
+                    if listing.address
+                    else None,
+                    "address_building": listing.address.building
+                    if listing.address
+                    else None,
+                    "address_zip": listing.address.zip_code
+                    if listing.address
+                    else None,
+                    "location": location_wkb,
+                    "room_count": listing.room_count,
+                    "area": listing.area,
+                    "floor": listing.floor,
+                    "total_floors": listing.total_floors,
+                    "description": listing.description,
+                    "owner_name": listing.owner_info.name
+                    if listing.owner_info
+                    else None,
+                    "owner_type_declared": listing.owner_info.owner_type
+                    if listing.owner_info
+                    else None,
+                    "status": listing.status,
+                    "is_verified": listing.is_verified,
+                    "view_count": listing.view_count,
+                    "first_seen_at": listing.first_seen_at,
+                    "last_seen_at": listing.last_seen_at,
+                }
+            )
 
         # Build bulk insert with ON CONFLICT
         stmt = pg_insert(ListingORM).values(values)
@@ -345,13 +363,25 @@ class DatabaseListingLoader:
                 "description": stmt.excluded.description,
                 "owner_id": stmt.excluded.owner_id,
             },
-        ).returning(ListingORM.id, ListingORM.external_id, ListingORM.created_at, ListingORM.updated_at)
+        ).returning(
+            ListingORM.id,
+            ListingORM.external_id,
+            ListingORM.created_at,
+            ListingORM.updated_at,
+        )
 
         result = await self._session.execute(stmt)
         rows = result.all()
 
         # Map IDs back to Listings
-        id_map = {row.external_id: {"id": row.id, "created_at": row.created_at, "updated_at": row.updated_at} for row in rows}
+        id_map = {
+            row.external_id: {
+                "id": row.id,
+                "created_at": row.created_at,
+                "updated_at": row.updated_at,
+            }
+            for row in rows
+        }
 
         # Update listings with DB values
         for listing in listings:
@@ -452,6 +482,7 @@ class DatabaseListingLoader:
         """Save photos for a listing, replacing old ones."""
         # Delete existing photos
         from sqlalchemy import delete
+
         stmt = delete(ListingPhotoORM).where(ListingPhotoORM.listing_id == listing_id)
         await self._session.execute(stmt)
 

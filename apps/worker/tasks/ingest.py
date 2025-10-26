@@ -26,4 +26,3 @@ def run_ingest(self, pages: int | None = None):
         "total_failed": result.total_failed,
         "errors": result.errors,
     }
-
