@@ -5,8 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
 from apps.api.depends import get_async_session
-from apps.worker import send_notification, example_db_task, send_listing_notification
-
+from apps.worker import (
+    send_notification,
+    example_db_task,
+    send_listing_notification,
+    run_ingest,
+)
 
 router = APIRouter(
     prefix="",
@@ -38,6 +42,12 @@ async def send_message(message: str):
 async def send_listing(listing_id: int):
     send_listing_notification.delay(listing_id)
     return {"status": "listing notification sent", "listing_id": listing_id}
+
+
+@router.post("/run-ingest")
+async def trigger_ingest(pages: int | None = None):
+    task = run_ingest.delay(pages=pages)
+    return {"status": "ingest started", "task_id": task.id}
 
 
 __all__ = [
