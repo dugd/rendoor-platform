@@ -7,7 +7,7 @@ from core.config import get_settings
 from core.ports.notifier import Notifier
 from core.ports.repos import IListingRepository
 from core.domain.notify import ChatId
-from core.infra.db.context import get_sessionmaker
+from core.infra.db.context import get_session
 from core.infra.repos import ListingRepository
 from ui.bot.adapters.telegram_notifier import TelegramNotifier
 from ui.bot.formatters.listing_formatter import TelegramListingFormatter
@@ -51,8 +51,7 @@ class Container:
     @asynccontextmanager
     async def listing_repository(self) -> AsyncGenerator[IListingRepository, None]:
         """Create a new listing repository instance with a fresh session"""
-        Session = get_sessionmaker()
-        async with Session() as session:
+        async with get_session() as session:
             yield ListingRepository(session)
 
     def cleanup(self):

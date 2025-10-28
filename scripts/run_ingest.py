@@ -30,7 +30,7 @@ async def main():
         provider = DomRiaProvider(client=client, max_listings=20)
         normalizer = DomRiaNormalizer()
 
-        async for session in get_session():
+        async with get_session() as session:
             loader = DatabaseListingLoader(session)
 
             logger.info("ETL pipeline initialized")

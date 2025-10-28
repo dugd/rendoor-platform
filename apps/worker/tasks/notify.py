@@ -4,7 +4,7 @@ from loguru import logger
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.infra.db.context import get_sessionmaker
+from core.infra.db.context import get_session
 from ..di import get_container
 from ..app import celery
 from .telegram import notify_admin_listing
@@ -50,8 +50,7 @@ def process_outbox(batch: int = 100):
     loop = container.get_or_create_loop()
 
     async def _run():
-        sessionmaker = get_sessionmaker()
-        async with sessionmaker() as session:
+        async with get_session() as session:
             msgs = await _claim_batch(session, batch)
             if not msgs:
                 return []

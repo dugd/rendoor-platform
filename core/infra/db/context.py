@@ -1,4 +1,5 @@
 from typing import AsyncGenerator
+from contextlib import asynccontextmanager
 
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
@@ -17,7 +18,7 @@ def init_db(*, dsn: str | None = None, echo: bool | None = None) -> None:
         return
     settings = get_settings()
     dsn = dsn or settings.get_postgres_dsn("asyncpg")
-    echo = echo or False # TODO: make configurable
+    echo = echo or False  # TODO: make configurable
 
     _engine = create_async_engine(dsn, echo=echo)
     _sessionmaker = create_async_sessionmaker(_engine)
@@ -40,16 +41,19 @@ def get_sessionmaker_with_init() -> async_sessionmaker[AsyncSession]:
     return get_sessionmaker()
 
 
+@asynccontextmanager
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     sm = get_sessionmaker()
     async with sm() as session:
         yield session
 
 
+@asynccontextmanager
 async def get_session_with_init() -> AsyncGenerator[AsyncSession, None]:
     if not is_db_initialized():
         init_db()
-    async for session in get_session():
+    sm = get_sessionmaker()
+    async with sm() as session:
         yield session
 
 
