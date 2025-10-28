@@ -29,7 +29,7 @@ async def build_async_client(base_url: str = "https://example.com") -> HttpClien
 
 
 if __name__ == "__main__":
-    from core.domain.ingest import Request
+    from core.domain.client import Request
     import asyncio
 
     async def main():

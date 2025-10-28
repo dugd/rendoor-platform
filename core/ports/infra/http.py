@@ -1,6 +1,6 @@
 from typing import Protocol, Callable
 
-from core.domain.ingest import Request, Response
+from core.domain.client import Request, Response
 
 
 class HttpPolicy(Protocol):

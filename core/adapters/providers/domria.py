@@ -1,7 +1,8 @@
 import json
 from typing import Mapping, Any, AsyncIterable
 
-from core.domain.ingest import RawListing, Page, Request
+from core.domain.ingest import RawListing
+from core.domain.client import Page, Request
 from core.ports import HttpClient
 
 

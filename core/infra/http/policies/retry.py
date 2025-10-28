@@ -2,7 +2,7 @@ import random
 import asyncio
 from typing import Callable
 
-from core.domain.ingest import Request, Response
+from core.domain.client import Request, Response
 
 
 class RetryPolicy:

@@ -1,4 +1,4 @@
-from core.domain.ingest import Request, Response
+from core.domain.client import Request, Response
 from core.ports.infra import HttpTransport, HttpPolicy
 
 

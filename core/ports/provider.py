@@ -1,6 +1,7 @@
 from typing import Protocol, AsyncIterable, Mapping, Any
 
-from core.domain.ingest import RawListing, Page
+from core.domain.ingest import RawListing
+from core.domain.client import Page
 
 
 class ListingProvider(Protocol):

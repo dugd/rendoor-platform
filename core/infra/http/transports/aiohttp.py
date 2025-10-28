@@ -1,6 +1,6 @@
 import aiohttp
 
-from core.domain.ingest import Response, Request
+from core.domain.client import Response, Request
 
 
 class AioHttpTransport:
