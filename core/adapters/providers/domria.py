@@ -4,6 +4,8 @@ from typing import Mapping, Any, AsyncIterable
 from core.domain.ingest import RawListing
 from core.domain.client import Page, Request
 from core.ports import HttpClient
+from core.domain.client import ListingResult
+from core.ports.policies import StopPolicy
 
 
 class DomRiaProvider:
@@ -37,31 +39,36 @@ class DomRiaProvider:
         "mobileStatus": "1",
     }
 
-    def __init__(self, client: HttpClient):
+    def __init__(
+        self,
+        client: HttpClient,
+        stop_policy: StopPolicy | None = None,
+        max_listings: int | None = None,
+    ) -> None:
         self._client = client
+        self._stop_policy = stop_policy
+        self._max_listings = max_listings or -1
         self._source_code = "domria"
+        self._filters = self.DEFAULT_FILTERS
 
     @property
     def source_code(self) -> str:
         """Returns the source code identifier."""
         return self._source_code
 
-    async def search(
-        self, filters: Mapping[str, Any] | None = None, cursor: str | int | None = None
+    async def _fetch_search(
+        self, filters: Mapping[str, Any], cursor: str | int
     ) -> Page:
-        if cursor is None:
-            cursor = 0
-        async with self._client:
-            resp = await self._client.send(
-                Request(
-                    "GET",
-                    "/node/searchEngine/v2/",
-                    params={
-                        "page": cursor,
-                        **(filters if filters else self.DEFAULT_FILTERS),
-                    },
-                )
+        resp = await self._client.send(
+            Request(
+                "GET",
+                "/node/searchEngine/v2/",
+                params={
+                    "page": cursor,
+                    **filters,
+                },
             )
+        )
         next_cursor = cursor + 1
         data = json.loads(resp.content)
         items = [str(item) for item in data["items"]]
@@ -69,29 +76,52 @@ class DomRiaProvider:
             items=items, next_cursor=next_cursor, meta={"count": str(data["count"])}
         )
 
-    async def fetch(self, ids: list[str]) -> AsyncIterable[RawListing]:
-        """
-        Fetch full listing data by IDs.
+    async def _fetch_listing(self, _id: str) -> RawListing:
+        resp = await self._client.send(
+            Request(
+                "GET",
+                f"/realty/data/{_id}",
+                params={
+                    "lang_id": "4",
+                    "key": "",
+                },
+            )
+        )
+        data = resp.content
 
-        Renamed from 'iter' to 'fetch' to match the ListingProvider protocol.
-        """
+        return RawListing(
+            source_code=self._source_code,
+            external_id=_id,
+            payload=json.loads(data),
+            fetch_url=resp.url,
+        )
+
+    async def _fetch_listings(self, ids: list[str]) -> AsyncIterable[RawListing]:
+        for _id in ids:
+            yield await self._fetch_listing(_id)
+
+    async def fetch(
+        self,
+        cursor: str | None = None,
+    ) -> AsyncIterable[ListingResult]:
+        """Fetch listings from the external source."""
+        if cursor is None:
+            cursor = 0
         async with self._client:
-            for _id in ids:
-                resp = await self._client.send(
-                    Request(
-                        "GET",
-                        f"/realty/data/{_id}",
-                        params={
-                            "lang_id": "4",
-                            "key": "",
-                        },
-                    )
-                )
-                data = resp.content
+            while True:
+                page = await self._fetch_search(self._filters, cursor)
 
-                yield RawListing(
-                    source_code=self._source_code,
-                    external_id=_id,
-                    payload=json.loads(data),
-                    fetch_url=resp.url,
-                )
+                async for listing in self._fetch_listings(page.items):
+                    yield ListingResult(
+                        listing=listing,
+                        next_cursor=page.next_cursor,
+                    )
+                    self._max_listings -= 1
+                    if self._max_listings == 0:
+                        return
+                    if self._stop_policy and self._stop_policy.should_stop(listing):
+                        return
+                if page.next_cursor is None:
+                    return
+                cursor = page.next_cursor
+

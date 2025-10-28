@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from core.domain.ingest import RawListing
+
 
 @dataclass(frozen=True)
 class Request:
@@ -25,8 +27,19 @@ class Page:
     meta: dict[str, str] | None = None
 
 
+@dataclass(frozen=True)
+class ListingResult:
+    """
+    A result of listings fetched from the provider.
+    """
+
+    listing: RawListing
+    next_cursor: str | None
+
+
 __all__ = [
     "Request",
     "Response",
     "Page",
+    "ListingResult",
 ]
