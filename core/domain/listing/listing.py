@@ -41,7 +41,6 @@ class Listing:
         photos: list[Image] | None = None,
         status: ListingStatus = "active",
         is_verified: bool = False,
-        view_count: int = 0,
         fingerprint: str | None = None,
         is_archived: bool = False,
         first_seen_at: datetime | None = None,
@@ -80,16 +79,15 @@ class Listing:
 
         self.status = status
         self.is_verified = is_verified
-        self.view_count = view_count
 
         self.fingerprint = fingerprint or self._internal_generate_fingerprint()
 
-        now = datetime.now(timezone.utc)
         self.is_archived = is_archived
-        self.first_seen_at = first_seen_at or now
-        self.last_seen_at = last_seen_at or now
-        self.created_at = created_at or now
-        self.updated_at = updated_at or now
+
+        self.first_seen_at = first_seen_at  # might be not nullable
+        self.last_seen_at = last_seen_at
+        self.created_at = created_at or updated_at
+        self.updated_at = updated_at or created_at
 
     @property
     def natural_key(self) -> tuple[str, str]:
@@ -133,23 +131,15 @@ class Listing:
     def mark_seen(self) -> None:
         """Marks that the listing was found again (still active)"""
         self.last_seen_at = datetime.now(timezone.utc)
-        self.updated_at = self.last_seen_at
 
     def change_status(self, new_status: ListingStatus) -> None:
         """Changes listing status"""
         if self.status != new_status:
             self.status = new_status
-            self.updated_at = datetime.now(timezone.utc)
 
     def mark_verified(self) -> None:
         """Marks as verified"""
         self.is_verified = True
-        self.updated_at = datetime.now(timezone.utc)
-
-    def increment_views(self) -> None:
-        """Increments view counter"""
-        self.view_count += 1
-        self.updated_at = datetime.now(timezone.utc)
 
     def is_from_realtor(self) -> bool:
         """Checks if from realtor"""
@@ -159,7 +149,6 @@ class Listing:
         """Archives the listing"""
         if not self.is_archived:
             self.is_archived = True
-            self.updated_at = datetime.now(timezone.utc)
 
     def __repr__(self) -> str:
         price_str = (
