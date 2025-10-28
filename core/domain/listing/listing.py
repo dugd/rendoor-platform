@@ -1,3 +1,4 @@
+from uuid import UUID, uuid4
 from datetime import datetime, timezone
 import hashlib
 
@@ -21,13 +22,13 @@ class Listing:
 
     def __init__(
         self,
-        listing_id: int,
         source_code: str,
         external_id: str,
         url: str,
         title: str,
         *,
-        owner_id: int | None = None,
+        uuid: UUID | None = None,
+        external_owner_id: int | None = None,
         owner_info: OwnerInfo | None = None,
         price: Money | None = None,
         address: Address | None = None,
@@ -42,6 +43,7 @@ class Listing:
         is_verified: bool = False,
         view_count: int = 0,
         fingerprint: str | None = None,
+        is_archived: bool = False,
         first_seen_at: datetime | None = None,
         last_seen_at: datetime | None = None,
         created_at: datetime | None = None,
@@ -56,13 +58,13 @@ class Listing:
         if not title:
             raise ValueError("title is required")
 
-        self.id = listing_id
+        self.uuid = uuid or uuid4()
         self.source_code = source_code.strip().lower()
         self.external_id = external_id.strip()
         self.url = url.strip()
         self.title = title.strip()
 
-        self.owner_id = owner_id
+        self.external_owner_id = external_owner_id
         self.owner_info = owner_info
 
         self.price = price
@@ -80,9 +82,10 @@ class Listing:
         self.is_verified = is_verified
         self.view_count = view_count
 
-        self.fingerprint = fingerprint or self._generate_fingerprint()
+        self.fingerprint = fingerprint or self._internal_generate_fingerprint()
 
         now = datetime.now(timezone.utc)
+        self.is_archived = is_archived
         self.first_seen_at = first_seen_at or now
         self.last_seen_at = last_seen_at or now
         self.created_at = created_at or now
@@ -93,7 +96,7 @@ class Listing:
         """Unique key within the source"""
         return self.source_code, self.external_id
 
-    def _generate_fingerprint(self) -> str:
+    def _internal_generate_fingerprint(self) -> str:
         """
         Generates fingerprint for duplicate detection.
 
@@ -121,13 +124,8 @@ class Listing:
         key = "|".join(parts)
         return hashlib.sha256(key.encode()).hexdigest()[:32]
 
-    def assign_owner(self, owner_id: int) -> None:
-        """Links listing to owner"""
-        self.owner_id = owner_id
-        self.updated_at = datetime.now(timezone.utc)
-
     def update_price(self, new_price: Money) -> None:
-        """Updates price (will create entry in price history)"""
+        """Updates price (will create entry in price history (may be later))"""
         if self.price != new_price:
             self.price = new_price
             self.updated_at = datetime.now(timezone.utc)
@@ -157,26 +155,14 @@ class Listing:
         """Checks if from realtor"""
         return self.owner_info is not None and self.owner_info.is_realtor()
 
-    def is_duplicate_of(self, other: "Listing") -> bool:
-        """Checks if this listing is a duplicate of another"""
-        # If fingerprint matches - it's a duplicate
-        if self.fingerprint == other.fingerprint:
-            return True
-
-        # Additional check by address and main parameters
-        if self.address and other.address:
-            same_address = self.address.to_search_key() == other.address.to_search_key()
-            same_params = (
-                self.room_count == other.room_count
-                and self.floor == other.floor
-                and abs((self.area or 0) - (other.area or 0)) < 5  # tolerance 5 m²
-            )
-            return same_address and same_params
-
-        return False
+    def archive(self) -> None:
+        """Archives the listing"""
+        if not self.is_archived:
+            self.is_archived = True
+            self.updated_at = datetime.now(timezone.utc)
 
     def __repr__(self) -> str:
         price_str = (
             f"{self.price.amount} {self.price.currency}" if self.price else "N/A"
         )
-        return f"Listing(id={self.id}, title='{self.title[:30]}...', price={price_str}, status={self.status})"
+        return f"Listing(id={self.uuid}, title='{self.title[:30]}...', price={price_str}, status={self.status})"

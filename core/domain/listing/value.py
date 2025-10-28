@@ -113,7 +113,7 @@ class OwnerInfo:
         return self.owner_type in ("realtor", "agency")
 
 
-ListingStatus = Literal["active", "rented", "removed", "duplicate", "archived"]
+ListingStatus = Literal["active", "rented", "removed"]
 
 
 __all__ = [
