@@ -1,29 +1,59 @@
-from core.config import get_settings
+from loguru import logger
+
+from core.adapters import DomRiaProvider, DomRiaNormalizer, DatabaseListingLoader
+from core.infra.db import get_session
+from core.infra.http.builder import build_async_client
 
 from ..app import celery
-from ..di import get_container
 from ..lifespan import get_loop
 
 
 @celery.task(bind=True)
-def run_ingest(self, pages: int | None = None):
+def run_ingest(self):
     """Run the full ingest ETL pipeline"""
-    container = get_container()
     loop = get_loop()
 
     async def _run():
-        etl_pipeline = await container.domria_etl_pipeline
-        result = await etl_pipeline.run(
-            max_pages=pages if pages else 1,
-            save_raw=get_settings().SAVE_RAW_LISTINGS,
-        )
-        return result
+        client = await build_async_client("https://dom.ria.com")
+        logger.info("HTTP client built successfully")
+
+        provider = DomRiaProvider(client=client, max_listings=20)
+        normalizer = DomRiaNormalizer()
+
+        async with get_session() as session:
+            loader = DatabaseListingLoader(session)
+
+            logger.info("ETL pipeline initialized")
+
+            # Run the pipeline
+            try:
+                raw_listings = []
+                listings = []
+                async for listing_result in provider.fetch():
+                    raw_listing = listing_result.listing
+                    raw_listings.append(raw_listing)
+                    try:
+                        normalized_listing = await normalizer.normalize(raw_listing)
+                        listings.append(normalized_listing)
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to process listing ID: {raw_listing.uuid}, Error: {e}"
+                        )
+
+                await loader.bulk_save_raw(raw_listings)
+                loaded = await loader.bulk_save_listings(listings)
+            except Exception as e:
+                logger.error(f"ETL pipeline failed: {e}")
+                raise
+
+            logger.success("ETL pipeline completed successfully!")
+
+        return {
+            "total_fetched": len(raw_listings),
+            "total_normalized": len(listings),
+            "total_loaded": len(loaded),
+            "total_failed": len(raw_listings) - len(listings),
+        }
 
     result = loop.run_until_complete(_run())
-    return {
-        "total_fetched": result.total_fetched,
-        "total_normalized": result.total_normalized,
-        "total_loaded": result.total_loaded,
-        "total_failed": result.total_failed,
-        "errors": result.errors,
-    }
+    return result

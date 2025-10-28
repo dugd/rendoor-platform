@@ -45,8 +45,8 @@ async def send_listing(listing_id: int):
 
 
 @router.post("/run-ingest")
-async def trigger_ingest(pages: int | None = None):
-    task = run_ingest.delay(pages=pages)
+async def trigger_ingest():
+    task = run_ingest.delay()
     return {"status": "ingest started", "task_id": task.id}
 
 
