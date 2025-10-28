@@ -204,3 +204,31 @@ class ListingPriceHistoryORM(Model):
     __table_args__ = (
         Index("ix_price_history_listing_date", "listing_id", "recorded_at"),
     )
+
+
+class OutboxMessageORM(Model):
+    __tablename__ = "outbox_messages"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    payload: Mapped[dict] = mapped_column(JSON)  # Message payload as JSON
+    aggregate_type: Mapped[str] = mapped_column(
+        String(64), index=True
+    )  # e.g., "listing"
+    aggregate_id: Mapped[str | None] = mapped_column(
+        String(64), index=True
+    )  # e.g., listing.id
+    message_type: Mapped[str] = mapped_column(
+        String(64), index=True
+    )  # e.g., "listing.created"
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    processing_attempts: Mapped[int] = mapped_column(Integer, default=0)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "aggregate_type", "aggregate_id", "message_type", name="uq_outbox_agg_msg"
+        ),
+    )

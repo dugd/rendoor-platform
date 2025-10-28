@@ -1,5 +1,6 @@
 import json
 import sys
+import os
 import logging
 import traceback
 import io
@@ -164,6 +165,33 @@ def setup_loguru(
 
     return logger
 
+
+def configure_logger(
+    default_service_name: str = "app",
+):
+    """Configure logger with env-based settings"""
+
+    service_name = os.getenv("SERVICE_NAME", default_service_name)
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+    log_format = os.getenv("LOG_FORMAT", "json")
+    debug = os.getenv("APP_DEBUG", "false").lower() == "true"
+
+    return setup_loguru(
+        service=service_name,
+        level=log_level,
+        sink=log_format,
+        settings={
+            "backtrace": debug,
+            "enqueue": True,
+            "diagnose": debug,
+        },
+    )
+
+
+__all__ = [
+    "setup_loguru",
+    "configure_logger",
+]
 
 if __name__ == "__main__":
     log = setup_loguru(

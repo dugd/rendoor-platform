@@ -17,7 +17,7 @@ services:
     env_file:
       - ../.env.example
     environment:
-      APP_SERVICE_NAME: api-app
+      SERVICE_NAME: api-app
     ports:
       - ${EXPOSE_WEB_PORT:-8000}:8000
 
@@ -34,7 +34,7 @@ services:
     env_file:
       - ../.env.example
     environment:
-      APP_SERVICE_NAME: telegram-bot
+      SERVICE_NAME: telegram-bot
     restart: unless-stopped
 
   celery-worker:
@@ -50,7 +50,7 @@ services:
     env_file:
       - ../.env.example
     environment:
-      APP_SERVICE_NAME: celery-worker
+      SERVICE_NAME: celery-worker
     command: [ "celery", "-A", "apps.worker", "worker", "--loglevel=INFO" ]
 
   celery-beat:
@@ -66,7 +66,7 @@ services:
     env_file:
       - ../.env.example
     environment:
-      APP_SERVICE_NAME: celery-beat
+      SERVICE_NAME: celery-beat
     command: [ "celery", "-A", "apps.worker", "beat", "--loglevel=INFO" ]
 
   postgres:

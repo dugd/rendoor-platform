@@ -94,4 +94,3 @@ class DomRiaProvider:
                     payload=json.loads(data),
                     fetch_url=resp.url,
                 )
-

@@ -15,15 +15,15 @@ class Settings(BaseSettings):
 
     ENV: str = "development"
     DEBUG: bool = True
-    LOGGING_LEVEL: str = "INFO"
-
-    SERVICE_NAME: str = "my-service"
 
     DB_URL: str
 
     BROKER_URL: str
 
     TELEGRAM_BOT_TOKEN: str
+    TELEGRAM_ADMIN_CHAT_ID: int
+
+    SAVE_RAW_LISTINGS: bool = True
 
     def get_postgres_dsn(self, driver: Literal["asyncpg", "psycopg2"]) -> str:
         return self.DB_URL.replace("postgresql://", f"postgresql+{driver}://")

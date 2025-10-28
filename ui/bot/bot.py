@@ -1,7 +1,9 @@
 import asyncio
 import logging
+
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
+
 from core.config import get_settings
 
 logging.basicConfig(level=logging.INFO)
