@@ -1,4 +1,3 @@
-import os
 import asyncio
 
 from loguru import logger
@@ -7,6 +6,7 @@ from celery import Celery, signals
 from core.config import get_settings
 from core.infra.telemetry.logger import configure_logger
 from core.infra.db import init_db, shutdown_db
+from core.infra.telegram import init_bot, shutdown_bot
 from .di import get_container
 
 
@@ -38,6 +38,8 @@ def _celery_worker_process_init(**kwargs):
     """Initialize resources per worker process"""
     configure_logger("celery-app")
     init_db(dsn=settings.get_postgres_dsn("asyncpg"))
+    init_bot(settings.TELEGRAM_BOT_TOKEN)
+    logger.info("Database and Bot initialized for worker process")
 
     container = get_container()
     container.get_or_create_loop()
@@ -47,13 +49,11 @@ def _celery_worker_process_init(**kwargs):
 @signals.worker_shutdown.connect
 def _celery_worker_process_shutdown(**kwargs):
     """Cleanup resources when worker shuts down"""
-    from .di import get_container
 
     async def cleanup():
         await shutdown_db()
-        container = get_container()
-        container.cleanup()
-        logger.info("Container cleaned up")
+        await shutdown_bot()
+        logger.info("All resources cleaned up")
 
     asyncio.run(cleanup())
 

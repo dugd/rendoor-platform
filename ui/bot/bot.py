@@ -1,15 +1,16 @@
 import asyncio
 import logging
 
-from aiogram import Bot, Dispatcher, types
+from aiogram import Dispatcher, types
 from aiogram.filters import Command
 
 from core.config import get_settings
+from core.infra.telegram import init_bot
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-bot = Bot(token=get_settings().TELEGRAM_BOT_TOKEN)
+bot = init_bot(get_settings().TELEGRAM_BOT_TOKEN)
 dp = Dispatcher()
 
 
