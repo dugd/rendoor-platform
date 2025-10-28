@@ -12,7 +12,7 @@ from core.domain.listing.value import (
 from core.infra.models import ListingORM, SourceORM
 
 
-class ListingRepository:
+class ListingRepository: # TODO: Make mapper
     """SQLAlchemy implementation of listing repository"""
 
     def __init__(self, session: AsyncSession):
@@ -23,7 +23,7 @@ class ListingRepository:
         stmt = (
             select(ListingORM)
             .options(joinedload(ListingORM.photos))
-            .where(ListingORM.id == listing.id)
+            .where(ListingORM.id == listing.uuid)
         )
         result = await self._session.execute(stmt)
         orm_listing = result.unique().scalar_one_or_none()
@@ -141,12 +141,12 @@ class ListingRepository:
             )
 
         return Listing(
-            listing_id=orm.id,
+            uuid=orm.id,
             source_code=orm.source.code,
             external_id=orm.external_id,
             url=orm.url,
             title=orm.title,
-            owner_id=orm.owner_id,
+            external_owner_id=orm.external_owner_id,
             owner_info=owner_info,
             price=price,
             address=address,
@@ -159,7 +159,6 @@ class ListingRepository:
             photos=photos,
             # status=orm.status,
             is_verified=orm.is_verified,
-            view_count=orm.view_count,
             fingerprint=orm.fingerprint,
             first_seen_at=orm.first_seen_at,
             last_seen_at=orm.last_seen_at,
@@ -224,8 +223,7 @@ class ListingRepository:
         # Update status and metadata
         orm.status = listing.status
         orm.is_verified = listing.is_verified
-        orm.view_count = listing.view_count
-        orm.owner_id = listing.owner_id
+        orm.external_owner_id = listing.external_owner_id
 
         # Update timestamps
         orm.first_seen_at = listing.first_seen_at

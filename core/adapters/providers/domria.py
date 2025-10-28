@@ -3,7 +3,7 @@ from typing import Mapping, Any, AsyncIterable
 
 from core.domain.ingest import RawListing
 from core.domain.client import Page, Request
-from core.ports import HttpClient
+from core.ports.infra import HttpClient
 from core.domain.client import ListingResult
 from core.ports.policies import StopPolicy
 

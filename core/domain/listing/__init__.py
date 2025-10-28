@@ -8,14 +8,7 @@ from .value import (
     OwnerType,
     ListingStatus,
 )
-from .owner import Owner, generate_owner_fingerprint
 from .listing import Listing
-from .service import (
-    DuplicateDetectionService,
-    OwnerLinkingService,
-    IListingRepository,
-    IOwnerRepository,
-)
 
 __all__ = [
     # Value Objects

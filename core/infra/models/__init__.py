@@ -1,6 +1,7 @@
+from uuid import UUID as UUIDType
 from datetime import datetime
+
 from sqlalchemy import (
-    BigInteger,
     Integer,
     String,
     Text,
@@ -12,18 +13,21 @@ from sqlalchemy import (
     JSON,
     Boolean,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.postgresql import UUID
 from geoalchemy2 import Geography
+
 from core.infra.db import Model
 
 
 class SourceORM(Model):
     __tablename__ = "sources"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    code: Mapped[str] = mapped_column(String(32), unique=True)
+    code: Mapped[str] = mapped_column(String(32), primary_key=True)
     name: Mapped[str] = mapped_column(String(128))
+    type: Mapped[str] = mapped_column(String(32))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     raw_listings: Mapped[list["RawListingORM"]] = relationship(back_populates="source")
@@ -33,9 +37,13 @@ class SourceORM(Model):
 class RawListingORM(Model):
     __tablename__ = "raw_listings"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    source_id: Mapped[int] = mapped_column(
-        ForeignKey("sources.id", ondelete="RESTRICT")
+    id: Mapped[UUIDType] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    source_code: Mapped[str] = mapped_column(
+        ForeignKey("sources.code", ondelete="RESTRICT")
     )
     external_id: Mapped[str] = mapped_column(String(128))
 
@@ -55,57 +63,23 @@ class RawListingORM(Model):
     source: Mapped["SourceORM"] = relationship(back_populates="raw_listings")
 
     __table_args__ = (
-        UniqueConstraint("source_id", "external_id", name="uq_raw_src_ext"),
+        UniqueConstraint("source_code", "external_id", name="uq_raw_src_ext"),
         Index("ix_raw_status_fetched", "processing_status", "fetched_at"),
-    )
-
-
-class OwnerORM(Model):
-    __tablename__ = "owners"
-
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    fingerprint: Mapped[str] = mapped_column(String(64), unique=True)
-
-    name: Mapped[str | None] = mapped_column(String(256))
-    owner_type: Mapped[str] = mapped_column(String(32), default="unknown", index=True)
-
-    # Contact info stored as JSON for flexibility
-    contact_phone: Mapped[str | None] = mapped_column(String(32))
-    contact_telegram: Mapped[str | None] = mapped_column(String(64))
-    contact_viber: Mapped[str | None] = mapped_column(String(32))
-    contact_whatsapp: Mapped[str | None] = mapped_column(String(32))
-    contact_email: Mapped[str | None] = mapped_column(String(128))
-
-    rating: Mapped[float] = mapped_column(Float, default=0.0)
-    listing_count: Mapped[int] = mapped_column(Integer, default=0)
-    verified: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
-
-    listings: Mapped[list["ListingORM"]] = relationship(back_populates="owner")
-
-    __table_args__ = (
-        Index("ix_owner_type_rating", "owner_type", "rating"),
-        Index("ix_owner_phone", "contact_phone"),
     )
 
 
 class ListingORM(Model):
     __tablename__ = "listings"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    source_id: Mapped[int] = mapped_column(
-        ForeignKey("sources.id", ondelete="RESTRICT")
+    id: Mapped[UUIDType] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    source_code: Mapped[str] = mapped_column(
+        ForeignKey("sources.code", ondelete="RESTRICT")
     )
     external_id: Mapped[str] = mapped_column(String(128))
-    owner_id: Mapped[int | None] = mapped_column(
-        ForeignKey("owners.id", ondelete="SET NULL")
-    )
 
     url: Mapped[str] = mapped_column(Text)
     title: Mapped[str] = mapped_column(Text)
@@ -133,13 +107,16 @@ class ListingORM(Model):
     total_floors: Mapped[int | None] = mapped_column(Integer)
     description: Mapped[str | None] = mapped_column(Text)
 
-    # Owner info from listing (may differ from Owner aggregate)
+    # Owner info from listing
+    external_owner_id: Mapped[str | None] = mapped_column(String(128))
     owner_name: Mapped[str | None] = mapped_column(String(256))
     owner_type_declared: Mapped[str | None] = mapped_column(String(32))
+    owner_contacts: Mapped[dict | None] = mapped_column(JSON)
 
     status: Mapped[str] = mapped_column(String(32), default="active", index=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
-    view_count: Mapped[int] = mapped_column(Integer, default=0)
+
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
 
     first_seen_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
@@ -147,6 +124,8 @@ class ListingORM(Model):
     last_seen_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
     )
+    listing_created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    listing_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -155,18 +134,14 @@ class ListingORM(Model):
     )
 
     source: Mapped["SourceORM"] = relationship(back_populates="listings")
-    owner: Mapped["OwnerORM | None"] = relationship(back_populates="listings")
     photos: Mapped[list["ListingPhotoORM"]] = relationship(
         back_populates="listing",
         cascade="all, delete-orphan",
         order_by="ListingPhotoORM.order",
     )
-    price_history: Mapped[list["ListingPriceHistoryORM"]] = relationship(
-        back_populates="listing", cascade="all, delete-orphan"
-    )
 
     __table_args__ = (
-        UniqueConstraint("source_id", "external_id", name="uq_listing_src_ext"),
+        UniqueConstraint("source_code", "external_id", name="uq_listing_src_ext"),
         Index("ix_listing_fingerprint_status", "fingerprint", "status"),
         Index("ix_listing_city_price", "address_city", "price_amount"),
         Index("ix_listing_status_updated", "status", "updated_at"),
@@ -176,7 +151,11 @@ class ListingORM(Model):
 class ListingPhotoORM(Model):
     __tablename__ = "listing_photos"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[UUIDType] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
     listing_id: Mapped[int] = mapped_column(
         ForeignKey("listings.id", ondelete="CASCADE")
     )
@@ -186,36 +165,20 @@ class ListingPhotoORM(Model):
     listing: Mapped["ListingORM"] = relationship(back_populates="photos")
 
 
-class ListingPriceHistoryORM(Model):
-    __tablename__ = "listing_price_history"
-
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    listing_id: Mapped[int] = mapped_column(
-        ForeignKey("listings.id", ondelete="CASCADE")
-    )
-    price_amount: Mapped[float] = mapped_column(Float)
-    price_currency: Mapped[str] = mapped_column(String(8))
-    recorded_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), index=True
-    )
-
-    listing: Mapped["ListingORM"] = relationship(back_populates="price_history")
-
-    __table_args__ = (
-        Index("ix_price_history_listing_date", "listing_id", "recorded_at"),
-    )
-
-
 class OutboxMessageORM(Model):
     __tablename__ = "outbox_messages"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[UUIDType] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
     payload: Mapped[dict] = mapped_column(JSON)  # Message payload as JSON
     aggregate_type: Mapped[str] = mapped_column(
         String(64), index=True
     )  # e.g., "listing"
-    aggregate_id: Mapped[str | None] = mapped_column(
-        String(64), index=True
+    aggregate_id: Mapped[UUIDType | None] = mapped_column(
+        UUID(as_uuid=True),
     )  # e.g., listing.id
     message_type: Mapped[str] = mapped_column(
         String(64), index=True
@@ -226,9 +189,3 @@ class OutboxMessageORM(Model):
     )
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     processing_attempts: Mapped[int] = mapped_column(Integer, default=0)
-
-    __table_args__ = (
-        UniqueConstraint(
-            "aggregate_type", "aggregate_id", "message_type", name="uq_outbox_agg_msg"
-        ),
-    )

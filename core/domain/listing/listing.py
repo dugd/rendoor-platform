@@ -28,7 +28,7 @@ class Listing:
         title: str,
         *,
         uuid: UUID | None = None,
-        external_owner_id: int | None = None,
+        external_owner_id: str | None = None,
         owner_info: OwnerInfo | None = None,
         price: Money | None = None,
         address: Address | None = None,

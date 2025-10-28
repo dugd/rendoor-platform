@@ -5,7 +5,6 @@ This module provides a concrete implementation of the ListingLoader protocol
 that saves listings to a PostgreSQL database using SQLAlchemy ORM.
 """
 
-import hashlib
 from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, insert
@@ -20,7 +19,6 @@ from core.infra.models import (
     RawListingORM,
     ListingORM,
     ListingPhotoORM,
-    OwnerORM,
 )
 
 
@@ -305,7 +303,7 @@ class DatabaseListingLoader:
 
             values.append(
                 {
-                    "source_id": source.id,
+                    "source_code": source.code,
                     "external_id": listing.external_id,
                     "owner_id": listing.owner_id,
                     "url": listing.url,
@@ -344,7 +342,6 @@ class DatabaseListingLoader:
                     else None,
                     "status": listing.status,
                     "is_verified": listing.is_verified,
-                    "view_count": listing.view_count,
                     "first_seen_at": listing.first_seen_at,
                     "last_seen_at": listing.last_seen_at,
                 }
@@ -417,66 +414,6 @@ class DatabaseListingLoader:
             await self._session.flush()
 
         return source
-
-    async def _get_or_create_owner(self, owner_info: Any) -> int:
-        """
-        Get or create owner from OwnerInfo.
-
-        Uses fingerprint based on contact info to detect duplicates.
-        """
-        # Generate fingerprint from contact info
-        fingerprint = self._generate_owner_fingerprint(owner_info)
-
-        # Try to find existing owner
-        stmt = select(OwnerORM).where(OwnerORM.fingerprint == fingerprint)
-        result = await self._session.execute(stmt)
-        owner = result.scalar_one_or_none()
-
-        if owner is None:
-            # Create new owner
-            contact = owner_info.contact
-            owner = OwnerORM(
-                fingerprint=fingerprint,
-                name=owner_info.name,
-                owner_type=owner_info.owner_type,
-                contact_phone=contact.phone if contact else None,
-                contact_telegram=contact.telegram if contact else None,
-                contact_viber=contact.viber if contact else None,
-                contact_whatsapp=contact.whatsapp if contact else None,
-                contact_email=contact.email if contact else None,
-                rating=0.0,
-                listing_count=0,
-                verified=False,
-            )
-            self._session.add(owner)
-            await self._session.flush()
-
-        return owner.id
-
-    def _generate_owner_fingerprint(self, owner_info: Any) -> str:
-        """Generate unique fingerprint for owner based on contact info."""
-        parts = []
-
-        if owner_info.contact:
-            if owner_info.contact.phone:
-                # Normalize phone number
-                phone = "".join(c for c in owner_info.contact.phone if c.isdigit())
-                parts.append(f"phone:{phone}")
-            if owner_info.contact.email:
-                parts.append(f"email:{owner_info.contact.email.lower()}")
-            if owner_info.contact.telegram:
-                parts.append(f"tg:{owner_info.contact.telegram.lower()}")
-
-        if not parts and owner_info.name:
-            # Fallback to name if no contact info
-            parts.append(f"name:{owner_info.name.lower()}")
-
-        if not parts:
-            # Last resort: random fingerprint
-            parts.append("unknown")
-
-        key = "|".join(parts)
-        return hashlib.sha256(key.encode()).hexdigest()[:64]
 
     async def _save_photos(self, listing_id: int, photos: list[Any]) -> None:
         """Save photos for a listing, replacing old ones."""
