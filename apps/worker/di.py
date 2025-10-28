@@ -1,4 +1,3 @@
-import asyncio
 from typing import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -20,13 +19,6 @@ class Container:
         self._bot = None
         self._formatter = None
         self._loop = None
-
-    def get_or_create_loop(self) -> asyncio.AbstractEventLoop:
-        """Get or create an event loop for this worker process"""
-        if self._loop is None or self._loop.is_closed():
-            self._loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(self._loop)
-        return self._loop
 
     @property
     def bot(self) -> Bot:

@@ -7,7 +7,7 @@ from core.config import get_settings
 from core.infra.telemetry.logger import configure_logger
 from core.infra.db import init_db, shutdown_db
 from core.infra.telegram import init_bot, shutdown_bot
-from .di import get_container
+from .lifespan import clear_loop
 
 
 settings = get_settings()
@@ -41,10 +41,6 @@ def _celery_worker_process_init(**kwargs):
     init_bot(settings.TELEGRAM_BOT_TOKEN)
     logger.info("Database and Bot initialized for worker process")
 
-    container = get_container()
-    container.get_or_create_loop()
-    logger.info("Container initialized for worker process")
-
 
 @signals.worker_shutdown.connect
 def _celery_worker_process_shutdown(**kwargs):
@@ -53,6 +49,8 @@ def _celery_worker_process_shutdown(**kwargs):
     async def cleanup():
         await shutdown_db()
         await shutdown_bot()
+        clear_loop()
+
         logger.info("All resources cleaned up")
 
     asyncio.run(cleanup())

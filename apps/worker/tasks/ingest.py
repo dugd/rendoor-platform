@@ -2,13 +2,14 @@ from core.config import get_settings
 
 from ..app import celery
 from ..di import get_container
+from ..lifespan import get_loop
 
 
 @celery.task(bind=True)
 def run_ingest(self, pages: int | None = None):
     """Run the full ingest ETL pipeline"""
     container = get_container()
-    loop = container.get_or_create_loop()
+    loop = get_loop()
 
     async def _run():
         etl_pipeline = await container.domria_etl_pipeline

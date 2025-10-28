@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.infra.db.context import get_session
 from ..di import get_container
+from ..lifespan import get_loop
 from ..app import celery
 from .telegram import notify_admin_listing
 
@@ -47,7 +48,7 @@ async def _nack(session: AsyncSession, msg_id: int):
 @celery.task()
 def process_outbox(batch: int = 100):
     container = get_container()
-    loop = container.get_or_create_loop()
+    loop = get_loop()
 
     async def _run():
         async with get_session() as session:

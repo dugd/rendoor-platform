@@ -3,6 +3,7 @@ from core.config import get_settings
 
 from ..app import celery
 from ..di import get_container
+from ..lifespan import get_loop
 
 
 async def notify_admin_text(container, message: str):
@@ -23,7 +24,7 @@ async def notify_admin_listing(container, listing_id: int):
 
 
 def _run_coro(container, coro):
-    loop = container.get_or_create_loop()
+    loop = get_loop()
     return loop.run_until_complete(coro)
 
 

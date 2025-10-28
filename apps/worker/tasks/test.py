@@ -3,13 +3,14 @@ from sqlalchemy import text
 
 from core.infra.db.context import get_sessionmaker_with_init
 from ..app import celery
+from ..lifespan import get_loop
 
 
 @celery.task(bind=True, name="example_db_task")
 def example_db_task(self) -> int:
     logger.info(self.request.id)
     sm = get_sessionmaker_with_init()
-    import asyncio
+    loop = get_loop()
 
     async def run_query():
         async with sm() as session:
@@ -17,4 +18,4 @@ def example_db_task(self) -> int:
             value = result.scalar()
             return value
 
-    return asyncio.run(run_query())
+    return loop.run_until_complete(run_query())
