@@ -21,7 +21,6 @@ COPY pyproject.toml poetry.lock* ./
 RUN poetry config virtualenvs.create false \
     && poetry install --no-interaction --without dev
 
-COPY ./core ./core
-COPY ./ui/bot ./ui/bot
+COPY . .
 
 CMD ["python", "-m", "ui.bot.bot"]

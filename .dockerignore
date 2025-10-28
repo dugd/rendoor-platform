@@ -1,0 +1,16 @@
+.venv/
+.idea/
+
+.git/
+.gitignore
+
+__pycache__/
+*.py[cod]
+
+.env*
+!.env.example
+
+celerybeat-schedule
+celerybeat-schedule-shm
+celerybeat-schedule-wal
+celerybeat.pid

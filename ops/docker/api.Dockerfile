@@ -15,8 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
 COPY pyproject.toml poetry.lock* ./
 RUN poetry config virtualenvs.create false && poetry install --no-interaction --without dev
 
-COPY ./core ./core
-COPY ./apps/api ./apps/api
+COPY . .
 
 EXPOSE 8000
 CMD ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]

@@ -15,7 +15,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
 COPY pyproject.toml poetry.lock* ./
 RUN poetry config virtualenvs.create false && poetry install --no-interaction --without dev
 
-COPY ./core ./core
-COPY ./apps/worker ./apps/worker
+COPY . .
 
 CMD ["celery", "-A", "apps.worker", "worker", "--loglevel=INFO", "--concurrency=2"]
