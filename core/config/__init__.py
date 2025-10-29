@@ -16,9 +16,10 @@ class Settings(BaseSettings):
     ENV: str = "development"
     DEBUG: bool = True
 
-    DB_URL: str
+    DB_URL: str  # postgresql connection string
 
-    BROKER_URL: str
+    BROKER_URL: str  # e.g. redis://localhost:6379/0
+    BOT_STORAGE_URL: str  # use redis
 
     TELEGRAM_BOT_TOKEN: str
     TELEGRAM_ADMIN_CHAT_ID: int

@@ -3,6 +3,8 @@ import logging
 
 from aiogram import Dispatcher, types
 from aiogram.filters import Command
+from aiogram.fsm.storage.redis import RedisStorage, DefaultKeyBuilder
+from redis.asyncio import from_url
 
 from core.config import get_settings
 from core.infra.telegram import init_bot
@@ -11,7 +13,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 bot = init_bot(get_settings().TELEGRAM_BOT_TOKEN)
-dp = Dispatcher()
+redis = from_url(get_settings().REDIS_URL)
+storage = RedisStorage(
+    redis=redis,
+    key_builder=DefaultKeyBuilder(with_bot_id=True),
+)
+dp = Dispatcher(storage=storage)
 
 
 @dp.message(Command("start"))
