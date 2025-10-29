@@ -1,6 +1,7 @@
 # Byte-compiled / optimized / DLL files
 .venv/
 .idea/
+.claude/
 
 # Python cache files
 __pycache__/
