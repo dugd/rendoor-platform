@@ -10,8 +10,8 @@ from core.domain.notify import ChatId
 from core.infra.db.context import get_session
 from core.infra.telegram import get_bot
 from core.infra.repos import ListingRepository
-from ui.bot.adapters.telegram_notifier import TelegramNotifier
-from ui.bot.formatters.listing_formatter import TelegramListingFormatter
+from adapters.notifier import TelegramNotifier
+from adapters.formatter import TelegramListingFormatter
 
 
 class Container:
