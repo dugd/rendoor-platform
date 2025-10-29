@@ -1,8 +1,8 @@
-from .user import User
+from .user import TgUser
 from .filter import Filter
 
 
 __all__ = [
-    "User",
+    "TgUser",
     "Filter",
 ]
