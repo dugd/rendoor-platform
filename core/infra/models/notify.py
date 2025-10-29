@@ -68,9 +68,16 @@ class SubscriptionORM(Model):
     channel: Mapped[str] = mapped_column(String(16), default="telegram")
     chat_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        index=True,
+    )
     min_interval_sec: Mapped[int] = mapped_column(Integer, default=0)
-    last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        index=True,
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
