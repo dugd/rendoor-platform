@@ -1,4 +1,7 @@
 from aiogram import Bot
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums.parse_mode import ParseMode
+
 from core.config import get_settings
 
 
@@ -12,7 +15,12 @@ def init_bot(token: str | None = None) -> Bot:
     global _bot
     if _bot is not None:
         raise RuntimeError("Bot is already initialized")
-    _bot = Bot(token=token or settings.TELEGRAM_BOT_TOKEN)
+    _bot = Bot(
+        token=token or settings.TELEGRAM_BOT_TOKEN,
+        default=DefaultBotProperties(
+            parse_mode=ParseMode.HTML,
+        ),
+    )
 
     return _bot
 

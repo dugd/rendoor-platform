@@ -8,6 +8,8 @@ from core.infra.telemetry.logger import configure_logger
 from core.config import get_settings
 from core.infra.telegram import init_bot
 
+from .handlers import get_main_router
+
 logger = configure_logger("bot-app")
 
 bot = init_bot(get_settings().TELEGRAM_BOT_TOKEN)
@@ -17,6 +19,9 @@ storage = RedisStorage(
     key_builder=DefaultKeyBuilder(with_bot_id=True),
 )
 dp = Dispatcher(storage=storage)
+
+main_router = get_main_router()
+dp.include_router(main_router)
 
 
 async def main():
