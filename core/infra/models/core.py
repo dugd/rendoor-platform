@@ -19,6 +19,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from geoalchemy2 import Geography
+from geoalchemy2.types import WKBElement
 
 from core.infra.db import Model
 
@@ -66,7 +67,7 @@ class ListingORM(Model):
     address_building: Mapped[str | None] = mapped_column(String(64))
     address_zip: Mapped[str | None] = mapped_column(String(32))
 
-    location: Mapped[str | None] = mapped_column(
+    location: Mapped[WKBElement | None] = mapped_column(
         Geography(geometry_type="POINT", srid=4326)
     )
 
@@ -126,8 +127,8 @@ class ListingPhotoORM(Model):
         primary_key=True,
         server_default=text("gen_random_uuid()"),
     )
-    listing_id: Mapped[int] = mapped_column(
-        ForeignKey("listings.id", ondelete="CASCADE")
+    listing_id: Mapped[UUIDType] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("listings.id", ondelete="CASCADE"), index=True
     )
     url: Mapped[str] = mapped_column(Text)
     order: Mapped[int] = mapped_column(Integer, default=0)
