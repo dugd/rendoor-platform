@@ -20,6 +20,26 @@ def get_rooms_kb() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def get_quick_prices_kb(prices: list[int]) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+
+    for i in range(0, len(prices), 3):
+        row_prices = prices[i : i + 3]
+        for price in row_prices:
+            builder.add(
+                InlineKeyboardButton(
+                    text=f"{price:,}".replace(
+                        ",",
+                        " ",
+                    ),
+                    callback_data=f"price:{price}",
+                )
+            )
+        builder.adjust(len(row_prices))
+
+    return builder.as_markup(resize_keyboard=True)
+
+
 def get_filter_confirm_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 

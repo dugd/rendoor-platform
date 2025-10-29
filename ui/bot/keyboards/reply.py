@@ -40,19 +40,3 @@ def get_skip_kb() -> ReplyKeyboardMarkup:
     )
 
     return builder.as_markup(resize_keyboard=True)
-
-
-def get_quick_prices_kb(prices: list[int]) -> ReplyKeyboardMarkup:
-    builder = ReplyKeyboardBuilder()
-
-    for i in range(0, len(prices), 3):
-        row_prices = prices[i : i + 3]
-        for price in row_prices:
-            builder.add(KeyboardButton(text=f"{price:,}".replace(",", " ")))
-        builder.adjust(len(row_prices))
-
-    builder.row(
-        KeyboardButton(text="⏭ Пропустити"), KeyboardButton(text="❌ Скасувати")
-    )
-
-    return builder.as_markup(resize_keyboard=True)
