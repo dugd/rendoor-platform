@@ -10,7 +10,11 @@ from core.infra.telegram import init_bot
 from core.infra.db import init_db, shutdown_db
 
 from .handlers import get_main_router
-from .middlewares import DatabaseMiddleware, UserTrackerMiddleware
+from .middlewares import (
+    DatabaseMiddleware,
+    DependencyInjectionMiddleware,
+    UserTrackerMiddleware,
+)
 
 logger = configure_logger("bot-app")
 
@@ -33,6 +37,7 @@ async def main():
     main_router = get_main_router()
 
     dp.update.middleware(DatabaseMiddleware())
+    dp.update.middleware(DependencyInjectionMiddleware())
     dp.update.middleware(UserTrackerMiddleware())
 
     dp.include_router(main_router)

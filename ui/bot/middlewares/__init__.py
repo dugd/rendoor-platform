@@ -28,6 +28,24 @@ class DatabaseMiddleware(BaseMiddleware):
                 raise
 
 
+class DependencyInjectionMiddleware(BaseMiddleware):
+    def __init__(self):
+        super().__init__()
+
+    async def __call__(
+        self,
+        handler: Callable[[Update, Dict[str, Any]], Awaitable[Any]],
+        event: Update,
+        data: Dict[str, Any],
+    ) -> Any:
+        session = data.get("session")
+        if session:
+            data["user_service"] = DIContainer.get_user_service(session)
+            data["filter_service"] = DIContainer.get_filter_service(session)
+
+        return await handler(event, data)
+
+
 class UserTrackerMiddleware(BaseMiddleware):
     def __init__(self):
         super().__init__()
@@ -61,8 +79,6 @@ class UserTrackerMiddleware(BaseMiddleware):
                 domain_user = await self.upsert_user(tg_user, chat_id, session)
                 # Inject user and user_service into handler data
                 data["user"] = domain_user
-                data["user_service"] = DIContainer.get_user_service(session)
-                data["filter_service"] = DIContainer.get_filter_service(session)
 
         return await handler(event, data)
 
@@ -81,4 +97,8 @@ class UserTrackerMiddleware(BaseMiddleware):
         return domain_user
 
 
-__all__ = ["DatabaseMiddleware", "UserTrackerMiddleware"]
+__all__ = [
+    "DatabaseMiddleware",
+    "DependencyInjectionMiddleware",
+    "UserTrackerMiddleware",
+]
