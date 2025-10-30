@@ -8,6 +8,7 @@ from core.domain.user import TgUser
 from core.application.services import FilterService
 
 from ui.bot.utils.formatters import format_price_range
+from ui.bot.utils.helpers import edit_flow_message_from_callback
 from ui.bot.states import FiltersManageStates
 from ui.bot.keyboards.reply import (
     get_main_menu_kb,
@@ -43,7 +44,7 @@ async def show_filters_list(
         reply_markup=get_filters_list_kb(filters),
     )
 
-    await state.update_data(current_msg_id=sent.message_id)
+    await state.update_data(flow_message_id=sent.message_id)
 
 
 @router.callback_query(F.data.startswith("filter_open:"))
@@ -75,21 +76,12 @@ async def open_filter_card(
         "<i>Оберіть дію:</i>"
     )
 
-    data = await state.get_data()
-    msg_id = data.get("current_msg_id")
-
-    if msg_id:
-        await callback.bot.edit_message_text(
-            chat_id=callback.message.chat.id,
-            message_id=msg_id,
-            text=text,
-            reply_markup=get_filter_card_kb(fid),
-        )
-    else:
-        await callback.message.edit_text(
-            text,
-            reply_markup=get_filter_card_kb(fid),
-        )
+    await edit_flow_message_from_callback(
+        message=callback.message,
+        text=text,
+        reply_markup=get_filter_card_kb(fid),
+        state=state,
+    )
 
 
 @router.callback_query(F.data == "filter_back")
@@ -99,24 +91,15 @@ async def back_to_filters(
     state: FSMContext,
     user: TgUser,
 ):
-    user_data = await state.get_data()
-    msg_id = user_data.get("current_msg_id")
-
     filters = await filter_service.get_user_filters(user.uuid)
     await state.set_state(FiltersManageStates.LIST)
 
-    if msg_id:
-        await callback.bot.edit_message_text(
-            chat_id=callback.message.chat.id,
-            message_id=msg_id,
-            text="🔽 Обери фільтр для керування:",
-            reply_markup=get_filters_list_kb(filters),
-        )
-    else:
-        await callback.message.edit_text(
-            "🔽 Обери фільтр для керування:",
-            reply_markup=get_filters_list_kb(filters),
-        )
+    await edit_flow_message_from_callback(
+        message=callback.message,
+        text="🔽 Обери фільтр для керування:",
+        reply_markup=get_filters_list_kb(filters),
+        state=state,
+    )
 
 
 __all__ = ["router"]
