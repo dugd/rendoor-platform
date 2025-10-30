@@ -1,7 +1,7 @@
-from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession
-from repositories.user_repository import UserRepository
-from services.user_service import UserService
+
+from core.infra.repos import UserRepository, FilterRepository
+from core.application.services import UserService, FilterService
 
 
 class DIContainer:
@@ -12,9 +12,18 @@ class DIContainer:
         return UserRepository(session)
 
     @staticmethod
+    def get_filter_repository(session: AsyncSession) -> FilterRepository:
+        return FilterRepository(session)
+
+    @staticmethod
     def get_user_service(session: AsyncSession) -> UserService:
         user_repo = DIContainer.get_user_repository(session)
         return UserService(user_repo)
+
+    @staticmethod
+    def get_filter_service(session: AsyncSession) -> FilterService:
+        filter_repo = DIContainer.get_filter_repository(session)
+        return FilterService(filter_repo)
 
 
 __all__ = [

@@ -15,7 +15,6 @@ from ui.bot.keyboards.inline import (
 )
 from ui.bot.utils import messages, validators
 from ui.bot.utils.formatters import format_price_range, format_rooms
-from ui.bot.mocks import create_filter
 from ui.bot.states import FilterCreateStates, SubscriptionStates
 from ui.bot.config import (
     QUICK_PRICES,
@@ -24,12 +23,13 @@ from ui.bot.config import (
     MIN_PRICE,
     MAX_PRICE,
 )
-
 from ui.bot.utils.helpers import (
     display_error,
     edit_flow_message,
     edit_flow_message_from_callback,
 )
+from core.domain.user import TgUser
+from core.application.services import FilterService
 
 router = Router(name="filters_create")
 
@@ -304,7 +304,12 @@ async def process_rooms(callback: CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(FilterCreateStates.CONFIRM, F.data.startswith("filter_confirm:"))
-async def confirm_filter(callback: CallbackQuery, state: FSMContext):
+async def confirm_filter(
+    callback: CallbackQuery,
+    state: FSMContext,
+    user: TgUser,
+    filter_service: FilterService,
+):
     await callback.answer()
 
     action = callback.data.split(":")[1]
@@ -317,17 +322,23 @@ async def confirm_filter(callback: CallbackQuery, state: FSMContext):
         )
         return
 
-    # Create filter
     data = await state.get_data()
     is_active = action == "activate"
 
-    new_filter = create_filter(
-        user_id=callback.from_user.id,
+    # Convert rooms list to room_count
+    rooms = data.get("rooms", [])
+    room_count = rooms[0] if rooms and len(rooms) == 1 else None
+
+    # Generate filter name from city
+    filter_name = f"Filter for {data['city']}"
+
+    new_filter = await filter_service.create_filter(
+        user_id=user.uuid,
+        name=filter_name,
         city=data["city"],
         price_min=data.get("price_min"),
         price_max=data.get("price_max"),
-        rooms=data["rooms"],
-        is_active=is_active,
+        room_count=room_count,
     )
 
     try:
@@ -350,7 +361,7 @@ async def confirm_filter(callback: CallbackQuery, state: FSMContext):
         )
 
         await state.set_state(SubscriptionStates.ACTIVE)
-        await state.update_data(filter_id=new_filter.id)
+        await state.update_data(filter_id=str(new_filter.id))
     else:
         await callback.message.answer(
             filter_card + "\n" + messages.FILTER_CREATED_SAVED,

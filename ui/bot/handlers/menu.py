@@ -4,6 +4,8 @@ from aiogram.fsm.context import FSMContext
 
 from ui.bot.keyboards.reply import get_main_menu_kb
 from ui.bot.utils import messages
+from core.domain.user import TgUser
+from core.application.services import FilterService
 
 router = Router(name="menu")
 
@@ -41,10 +43,19 @@ async def show_help(message: Message):
 
 
 @router.message(F.text == "📊 Статистика")
-async def show_stats(message: Message):
-    from ui.bot.mocks import get_user_stats
+async def show_stats(
+    message: Message,
+    user: TgUser,
+    filter_service: FilterService,
+):
+    filters = await filter_service.get_user_filters(user.uuid)
 
-    stats = get_user_stats(message.from_user.id)
+    # TODO: Get favorites count and listings count from database
+    stats = {
+        "filters_count": len(filters),
+        "favorites_count": 0,
+        "listings_count": 0,
+    }
 
     stats_text = f"""
 📊 <b>Твоя статистика</b>
@@ -61,9 +72,8 @@ async def show_stats(message: Message):
 
 @router.message(F.text == "❤️ Обране")
 async def show_favorites(message: Message):
-    from ui.bot.mocks import mock_favorites
-
-    favorites = mock_favorites.get(message.from_user.id, [])
+    # TODO: Implement favorites repository and service
+    favorites = []
 
     if not favorites:
         await message.answer(
