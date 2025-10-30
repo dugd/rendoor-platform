@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from ui.bot.config import ROOMS_OPTIONS
@@ -57,4 +59,34 @@ def get_filter_confirm_kb() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="❌ Скасувати", callback_data="filter_confirm:cancel")
     )
 
+    return builder.as_markup()
+
+
+def get_filters_list_kb(filters: list) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for f in filters:
+        builder.row(
+            InlineKeyboardButton(text=f.name, callback_data=f"filter_open:{f.id}")
+        )
+    return builder.as_markup()
+
+
+def get_filter_card_kb(filter_id: UUID) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text="✏️ Редагувати", callback_data=f"filter_edit:{filter_id}"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="🗑 Видалити", callback_data=f"filter_delete:{filter_id}"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="🔔 Активувати", callback_data=f"filter_subscribe:{filter_id}"
+        )
+    )
+    builder.row(InlineKeyboardButton(text="⬅️ Назад", callback_data="filter_back"))
     return builder.as_markup()

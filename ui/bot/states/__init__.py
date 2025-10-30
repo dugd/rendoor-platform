@@ -17,6 +17,11 @@ class FilterEditStates(StatesGroup):
     ROOMS = State()
 
 
+class FiltersManageStates(StatesGroup):
+    LIST = State()
+    CARD = State()
+
+
 class SubscriptionStates(StatesGroup):
     ACTIVE = State()
 
@@ -29,6 +34,7 @@ class FavoritesStates(StatesGroup):
 __all__ = [
     "FilterCreateStates",
     "FilterEditStates",
+    "FiltersManageStates",
     "SubscriptionStates",
     "FavoritesStates",
 ]

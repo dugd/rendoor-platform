@@ -40,3 +40,10 @@ def get_skip_kb() -> ReplyKeyboardMarkup:
     )
 
     return builder.as_markup(resize_keyboard=True)
+
+
+def get_back_kb() -> ReplyKeyboardMarkup:
+    builder = ReplyKeyboardBuilder()
+    builder.row(KeyboardButton(text="⬅️ назад"), KeyboardButton(text="🏠 В меню"))
+
+    return builder.as_markup(resize_keyboard=True)
