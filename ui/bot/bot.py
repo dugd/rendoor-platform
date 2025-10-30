@@ -7,26 +7,44 @@ from redis.asyncio import from_url
 from core.infra.telemetry.logger import configure_logger
 from core.config import get_settings
 from core.infra.telegram import init_bot
+from core.infra.db import init_db, shutdown_db
 
 from .handlers import get_main_router
+from .middlewares import DatabaseMiddleware, UserTrackerMiddleware
 
 logger = configure_logger("bot-app")
 
-bot = init_bot(get_settings().TELEGRAM_BOT_TOKEN)
-redis = from_url(get_settings().BOT_STORAGE_URL)
-storage = RedisStorage(
-    redis=redis,
-    key_builder=DefaultKeyBuilder(with_bot_id=True),
-)
-dp = Dispatcher(storage=storage)
-
-main_router = get_main_router()
-dp.include_router(main_router)
-
 
 async def main():
-    logger.info("Starting Telegram bot...")
-    await dp.start_polling(bot, skip_updates=True)
+    settings = get_settings()
+
+    logger.info("Configuring Telegram bot...")
+
+    bot = init_bot(settings.TELEGRAM_BOT_TOKEN)
+
+    init_db(dsn=settings.get_postgres_dsn("asyncpg"))
+    redis = from_url(settings.BOT_STORAGE_URL)
+    storage = RedisStorage(
+        redis=redis,
+        key_builder=DefaultKeyBuilder(with_bot_id=True),
+    )
+    dp = Dispatcher(storage=storage)
+
+    main_router = get_main_router()
+
+    dp.update.middleware(DatabaseMiddleware())
+    dp.update.middleware(UserTrackerMiddleware())
+
+    dp.include_router(main_router)
+
+    try:
+        logger.info("Starting Telegram bot...")
+        await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+    finally:
+        logger.info("Stopping Telegram bot...")
+
+        await bot.session.close()
+        await shutdown_db()
 
 
 if __name__ == "__main__":
