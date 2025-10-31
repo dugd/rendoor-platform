@@ -61,3 +61,27 @@ class FilterService:
 
     async def delete_filter(self, filter_id: UUID) -> None:
         await self._filter_repo.delete(filter_id)
+
+    async def activate_filter(self, user_id: UUID, filter_id: UUID) -> None:
+        """
+        Activate a filter for the user.
+        Only one filter can be active at a time per user.
+
+        Note: This is a placeholder for UI integration.
+        Actual subscription logic will be implemented later.
+        """
+        # TODO: Implement subscription activation logic
+        # 1. Deactivate any existing active subscriptions for this user
+        # 2. Create or activate subscription for the given filter
+        pass
+
+    async def deactivate_filter(self, user_id: UUID, filter_id: UUID) -> None:
+        """
+        Deactivate a filter for the user.
+
+        Note: This is a placeholder for UI integration.
+        Actual subscription logic will be implemented later.
+        """
+        # TODO: Implement subscription deactivation logic
+        # Set is_active=False for the subscription
+        pass

@@ -355,6 +355,9 @@ async def confirm_filter(
 """
 
     if is_active:
+        # Activate the filter (placeholder - will implement real logic later)
+        await filter_service.activate_filter(user.uuid, new_filter.id)
+
         await callback.message.answer(
             filter_card + "\n" + messages.FILTER_CREATED_ACTIVATED,
             reply_markup=get_subscription_kb(),
