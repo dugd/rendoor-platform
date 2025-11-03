@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.domain.user import Filter
 from core.infra.models.user import FilterORM
+from core.infra.models.notify import SubscriptionORM
 from core.infra.mappers import FilterMapper
 
 
@@ -53,15 +54,20 @@ class FilterRepository:
         return [FilterMapper.to_domain(orm) for orm in orm_filters]
 
     async def get_active_filter(self, user_id: UUID) -> Filter | None:
-        """Get the active filter for a user
+        """Get the active filter for a user by finding the active subscription"""
+        stmt = (
+            select(FilterORM)
+            .join(SubscriptionORM, FilterORM.id == SubscriptionORM.filter_id)
+            .where(FilterORM.tg_user_id == user_id)
+            .where(SubscriptionORM.is_active == True)
+        )
+        result = await self._session.execute(stmt)
+        orm_filter = result.scalar_one_or_none()
 
-        Note: This method requires subscription functionality to be implemented.
-        For now, it returns None as filters don't have an is_active field directly.
-        """
-        # TODO: Implement once subscription system is in place
-        # This would query the subscriptions table to find active subscription
-        # and return its associated filter
-        return None
+        if not orm_filter:
+            return None
+
+        return FilterMapper.to_domain(orm_filter)
 
     async def delete(self, filter_id: UUID) -> None:
         """Delete a filter"""

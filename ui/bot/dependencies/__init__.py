@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.infra.repos import UserRepository, FilterRepository
-from core.application.services import UserService, FilterService
+from core.infra.repos import UserRepository, FilterRepository, SubscriptionRepository
+from core.application.services import UserService, FilterService, SubscriptionService
 
 
 class DIContainer:
@@ -16,14 +16,24 @@ class DIContainer:
         return FilterRepository(session)
 
     @staticmethod
+    def get_subscription_repository(session: AsyncSession) -> SubscriptionRepository:
+        return SubscriptionRepository(session)
+
+    @staticmethod
     def get_user_service(session: AsyncSession) -> UserService:
         user_repo = DIContainer.get_user_repository(session)
         return UserService(user_repo)
 
     @staticmethod
+    def get_subscription_service(session: AsyncSession) -> SubscriptionService:
+        subscription_repo = DIContainer.get_subscription_repository(session)
+        return SubscriptionService(subscription_repo)
+
+    @staticmethod
     def get_filter_service(session: AsyncSession) -> FilterService:
         filter_repo = DIContainer.get_filter_repository(session)
-        return FilterService(filter_repo)
+        subscription_service = DIContainer.get_subscription_service(session)
+        return FilterService(filter_repo, subscription_service)
 
 
 __all__ = [

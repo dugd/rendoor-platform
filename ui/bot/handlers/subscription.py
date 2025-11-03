@@ -13,10 +13,10 @@ router = Router(name="subscription")
 
 @router.callback_query(F.data.startswith("filter_subscribe:"))
 async def activate_subscription(
-        callback: CallbackQuery,
-        state: FSMContext,
-        user: TgUser,
-        filter_service: FilterService,
+    callback: CallbackQuery,
+    state: FSMContext,
+    user: TgUser,
+    filter_service: FilterService,
 ):
     """
     Handle filter activation from filter card.
@@ -33,8 +33,8 @@ async def activate_subscription(
         await callback.answer("Фільтр не знайдено.", show_alert=True)
         return
 
-    # Activate filter (placeholder - will implement real logic later)
-    await filter_service.activate_filter(user.uuid, filter_id)
+    # Activate filter by creating/activating subscription
+    await filter_service.activate_filter(user.uuid, filter_id, user.tg_chat_id)
 
     await state.set_state(SubscriptionStates.ACTIVE)
     await state.update_data(filter_id=str(filter_id))
@@ -58,10 +58,10 @@ async def activate_subscription(
 
 @router.message(F.text == "⏸ Зупинити підписку")
 async def stop_subscription(
-        message: Message,
-        state: FSMContext,
-        user: TgUser,
-        filter_service: FilterService,
+    message: Message,
+    state: FSMContext,
+    user: TgUser,
+    filter_service: FilterService,
 ):
     """
     Handle stopping the active subscription.
@@ -83,7 +83,7 @@ async def stop_subscription(
     filter_obj = await filter_service.get_filter_by_id(filter_id)
 
     if filter_obj:
-        # Deactivate filter (placeholder - will implement real logic later)
+        # Deactivate filter subscription
         await filter_service.deactivate_filter(user.uuid, filter_id)
 
         confirmation_message = f"""

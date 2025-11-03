@@ -1,15 +1,24 @@
 from uuid import UUID
+from typing import TYPE_CHECKING
 
 from core.domain.user import Filter
 from core.domain.user.value import LocationFilter, PriceFilter, ApartmentFilter
 from core.ports.repos import IFilterRepository
 
+if TYPE_CHECKING:
+    from .subscription_service import SubscriptionService
+
 
 class FilterService:
     """Service for filter-related business logic"""
 
-    def __init__(self, filter_repository: IFilterRepository):
+    def __init__(
+        self,
+        filter_repository: IFilterRepository,
+        subscription_service: "SubscriptionService | None" = None,
+    ):
         self._filter_repo = filter_repository
+        self._subscription_service = subscription_service
 
     async def create_filter(
         self,
@@ -62,26 +71,42 @@ class FilterService:
     async def delete_filter(self, filter_id: UUID) -> None:
         await self._filter_repo.delete(filter_id)
 
-    async def activate_filter(self, user_id: UUID, filter_id: UUID) -> None:
+    async def activate_filter(
+        self, user_id: UUID, filter_id: UUID, chat_id: int
+    ) -> None:
         """
-        Activate a filter for the user.
+        Activate a filter for the user by creating/activating a subscription.
         Only one filter can be active at a time per user.
 
-        Note: This is a placeholder for UI integration.
-        Actual subscription logic will be implemented later.
+        Args:
+            user_id: User's UUID
+            filter_id: Filter UUID to activate
+            chat_id: Telegram chat ID for notifications
         """
-        # TODO: Implement subscription activation logic
-        # 1. Deactivate any existing active subscriptions for this user
-        # 2. Create or activate subscription for the given filter
-        pass
+        if self._subscription_service is None:
+            raise RuntimeError(
+                "SubscriptionService not injected into FilterService. "
+                "Cannot activate filter without subscription service."
+            )
+
+        await self._subscription_service.activate_subscription(
+            user_id=user_id, filter_id=filter_id, chat_id=chat_id
+        )
 
     async def deactivate_filter(self, user_id: UUID, filter_id: UUID) -> None:
         """
-        Deactivate a filter for the user.
+        Deactivate a filter for the user by deactivating its subscription.
 
-        Note: This is a placeholder for UI integration.
-        Actual subscription logic will be implemented later.
+        Args:
+            user_id: User's UUID
+            filter_id: Filter UUID to deactivate
         """
-        # TODO: Implement subscription deactivation logic
-        # Set is_active=False for the subscription
-        pass
+        if self._subscription_service is None:
+            raise RuntimeError(
+                "SubscriptionService not injected into FilterService. "
+                "Cannot deactivate filter without subscription service."
+            )
+
+        await self._subscription_service.deactivate_subscription(
+            user_id=user_id, filter_id=filter_id
+        )
