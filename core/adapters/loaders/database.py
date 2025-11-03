@@ -197,6 +197,10 @@ class DatabaseListingLoader:
         # Prepare bulk insert values using mapper
         values = [ListingMapper.to_orm_dict(listing) for listing in listings]
 
+        attempted_map = {
+            (v.get("source_code"), v.get("external_id")): v.get("id") for v in values
+        }
+
         # Build bulk insert with ON CONFLICT
         stmt = pg_insert(ListingORM).values(values)
         stmt = stmt.on_conflict_do_update(
@@ -216,7 +220,8 @@ class DatabaseListingLoader:
             },
         ).returning(
             ListingORM.id,
-            stmt.excluded.id.label("attempted_id"),
+            ListingORM.source_code,
+            ListingORM.external_id,
             ListingORM.created_at,
             ListingORM.updated_at,
             ListingORM.listing_created_at,
@@ -228,8 +233,9 @@ class DatabaseListingLoader:
 
         # Map new values back to Listings
         new_values_map = {
-            row.attempted_id: {
+            (row.source_code, row.external_id): {
                 "id": row.id,
+                "attempted_id": attempted_map.get((row.source_code, row.external_id)),
                 "created_at": row.listing_created_at or row.created_at,
                 "updated_at": row.listing_updated_at or row.updated_at,
             }
@@ -238,8 +244,9 @@ class DatabaseListingLoader:
 
         # Update listings with DB values
         for listing in listings:
-            if listing.uuid in new_values_map:
-                data = new_values_map[listing.uuid]
+            natural_key = listing.natural_key  # (source_code, external_id)
+            if natural_key in new_values_map:
+                data = new_values_map[natural_key]
                 listing.uuid = data["id"]
                 listing.created_at = data["created_at"]
                 listing.updated_at = data["updated_at"]
