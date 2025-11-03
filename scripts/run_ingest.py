@@ -29,8 +29,7 @@ async def main():
 
         provider = DomRiaProvider(
             client=client,
-            until_timestamp=1762196000,
-            max_listings=2,
+            until_timestamp=1762197000,
         )
         normalizer = DomRiaNormalizer()
 
@@ -52,10 +51,8 @@ async def main():
                     logger.error(
                         f"Failed to process listing ID: {raw_listing.uuid}, Error: {e}"
                     )
-            print([l.uuid for l in raw_listings])
-
-            # await loader.bulk_save_raw(raw_listings)
-            # await loader.bulk_save_listings(listings)
+            await loader.bulk_save_raw(raw_listings)
+            await loader.bulk_save_listings(listings)
 
             logger.success("ETL pipeline completed successfully!")
 

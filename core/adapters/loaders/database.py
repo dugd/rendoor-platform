@@ -114,6 +114,7 @@ class DatabaseListingLoader:
                 "listing_updated_at": stmt.excluded.listing_updated_at,
             },
         ).returning(
+            ListingORM.id,
             ListingORM.created_at,
             ListingORM.updated_at,
             ListingORM.listing_created_at,
@@ -124,6 +125,7 @@ class DatabaseListingLoader:
         row = result.one()
 
         # Update listing with DB-generated values
+        listing.uuid = row.id
         listing.created_at = row.listing_created_at or row.created_at
         listing.updated_at = row.listing_updated_at or row.updated_at
 
@@ -214,6 +216,7 @@ class DatabaseListingLoader:
             },
         ).returning(
             ListingORM.id,
+            stmt.excluded.id.label("attempted_id"),
             ListingORM.created_at,
             ListingORM.updated_at,
             ListingORM.listing_created_at,
@@ -223,9 +226,10 @@ class DatabaseListingLoader:
         result = await self._session.execute(stmt)
         rows = result.all()
 
-        # Map timestamps back to Listings
-        timestamp_map = {
-            row.id: {
+        # Map new values back to Listings
+        new_values_map = {
+            row.attempted_id: {
+                "id": row.id,
                 "created_at": row.listing_created_at or row.created_at,
                 "updated_at": row.listing_updated_at or row.updated_at,
             }
@@ -234,8 +238,9 @@ class DatabaseListingLoader:
 
         # Update listings with DB values
         for listing in listings:
-            if listing.uuid in timestamp_map:
-                data = timestamp_map[listing.uuid]
+            if listing.uuid in new_values_map:
+                data = new_values_map[listing.uuid]
+                listing.uuid = data["id"]
                 listing.created_at = data["created_at"]
                 listing.updated_at = data["updated_at"]
 
