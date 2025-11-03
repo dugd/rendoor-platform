@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from core.domain.ingest import RawListing
 from core.domain.listing import Listing
 from core.domain.listing.value import Money, Address, GeoLocation, Image
@@ -27,9 +29,6 @@ class DomRiaNormalizer:
 
         fingerprint = self._generate_fingerprint(payload)
 
-        # owner_id = str(payload.get("user_id")) if payload.get("user_id") else None
-        owner_id = None
-
         price = self._extract_price(payload)
 
         address = self._extract_address(payload)
@@ -48,15 +47,14 @@ class DomRiaNormalizer:
 
         photos = self._extract_photos(payload)
 
-        # NOTE: listing_id=-1 (not yet persisted)
+        now = datetime.now(timezone.utc)
+
         return Listing(
-            listing_id=-1,
             source_code=raw.source_code,
             external_id=external_id,
             url=url,
             title=title,
             fingerprint=fingerprint,
-            owner_id=owner_id,
             price=price,
             address=address,
             location=location,
@@ -65,6 +63,8 @@ class DomRiaNormalizer:
             floor=floor,
             description=description,
             photos=photos,
+            first_seen_at=now,
+            last_seen_at=now,
         )
 
     def _build_url(self, beautiful_url: str) -> str:

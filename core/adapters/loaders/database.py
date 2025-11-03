@@ -1,19 +1,14 @@
-"""
-Database implementation of ListingLoader.
-
-This module provides a concrete implementation of the ListingLoader protocol
-that saves listings to a PostgreSQL database using SQLAlchemy ORM.
-"""
+"""Database loader for persisting listings to PostgreSQL."""
 
 from typing import Any
+from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, insert
+from sqlalchemy import select, insert, delete
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from geoalchemy2.shape import from_shape
-from shapely.geometry import Point
 
 from core.domain.listing import Listing
 from core.domain.ingest import RawListing
+from core.infra.mappers import RawListingMapper, ListingMapper
 from core.infra.models import (
     SourceORM,
     RawListingORM,
@@ -26,7 +21,8 @@ class DatabaseListingLoader:
     """
     Database-backed loader for persisting listings to PostgreSQL.
 
-    Implements the ListingLoader protocol using SQLAlchemy ORM.
+    Uses mappers to convert between domain entities and ORM models,
+    following the repository pattern.
     """
 
     def __init__(self, session: AsyncSession):
@@ -43,29 +39,21 @@ class DatabaseListingLoader:
         Save a raw listing to the database.
 
         Uses INSERT ... ON CONFLICT to handle duplicates based on
-        (source_id, external_id) unique constraint.
+        (source_code, external_id) unique constraint.
 
         Args:
             raw: RawListing to save
 
         Returns:
-            RawListing with updated ID
+            RawListing with updated UUID
         """
         # Get or create source
-        source = await self._get_or_create_source(raw.source_code)
+        await self._get_or_create_source(raw.source_code)
+
+        raw_dict = RawListingMapper.to_orm_dict(raw)
 
         # Build insert statement with ON CONFLICT
-        stmt = pg_insert(RawListingORM).values(
-            source_id=source.id,
-            external_id=raw.external_id,
-            payload=raw.payload,
-            schema_version=raw.schema_version,
-            fetch_url=raw.fetch_url,
-            fetched_at=raw.fetched_at,
-            processing_status=raw.processing_status,
-            processing_error=raw.processing_error,
-            processed_at=raw.processed_at,
-        )
+        stmt = pg_insert(RawListingORM).values(**raw_dict)
 
         # On conflict, update the payload and fetch info
         stmt = stmt.on_conflict_do_update(
@@ -79,31 +67,18 @@ class DatabaseListingLoader:
                 "processing_error": stmt.excluded.processing_error,
                 "processed_at": stmt.excluded.processed_at,
             },
-        ).returning(RawListingORM.id)
-
-        result = await self._session.execute(stmt)
-        raw_id = result.scalar_one()
-
-        # Return updated RawListing with ID
-        return RawListing(
-            raw_id=raw_id,
-            source_code=raw.source_code,
-            external_id=raw.external_id,
-            payload=raw.payload,
-            schema_version=raw.schema_version,
-            fetch_url=raw.fetch_url,
-            fetched_at=raw.fetched_at,
-            processing_status=raw.processing_status,
-            processing_error=raw.processing_error,
-            processed_at=raw.processed_at,
         )
+
+        await self._session.execute(stmt)
+        await self._session.commit()
+
+        return raw
 
     async def save_listing(self, listing: Listing) -> Listing:
         """
         Save a normalized listing to the database.
 
         Handles:
-        - Creating/updating owner if owner_info is present
         - Upserting the listing
         - Saving photos
 
@@ -111,59 +86,18 @@ class DatabaseListingLoader:
             listing: Listing to save
 
         Returns:
-            Listing with updated ID and timestamps
+            Listing with updated timestamps
         """
         # Get or create source
-        source = await self._get_or_create_source(listing.source_code)
+        await self._get_or_create_source(listing.source_code)
 
-        # Handle owner if present
-        owner_id = listing.owner_id
-        if listing.owner_info and not owner_id:
-            owner_id = await self._get_or_create_owner(listing.owner_info)
-
-        # Prepare location for PostGIS
-        location_wkb = None
-        if listing.location:
-            point = Point(listing.location.longitude, listing.location.latitude)
-            location_wkb = from_shape(point, srid=4326)
+        # Use mapper to convert to ORM dict
+        listing_values = ListingMapper.to_orm_dict(listing)
 
         # Build listing insert with ON CONFLICT
-        listing_values = {
-            "source_id": source.id,
-            "external_id": listing.external_id,
-            "owner_id": owner_id,
-            "url": listing.url,
-            "title": listing.title,
-            "fingerprint": listing.fingerprint,
-            "price_amount": listing.price.amount if listing.price else None,
-            "price_currency": listing.price.currency if listing.price else None,
-            "address_country": listing.address.country if listing.address else None,
-            "address_state": listing.address.state if listing.address else None,
-            "address_city": listing.address.city if listing.address else None,
-            "address_district": listing.address.district if listing.address else None,
-            "address_street": listing.address.street if listing.address else None,
-            "address_building": listing.address.building if listing.address else None,
-            "address_zip": listing.address.zip_code if listing.address else None,
-            "location": location_wkb,
-            "room_count": listing.room_count,
-            "area": listing.area,
-            "floor": listing.floor,
-            "total_floors": listing.total_floors,
-            "description": listing.description,
-            "owner_name": listing.owner_info.name if listing.owner_info else None,
-            "owner_type_declared": listing.owner_info.owner_type
-            if listing.owner_info
-            else None,
-            "status": listing.status,
-            "is_verified": listing.is_verified,
-            "view_count": listing.view_count,
-            "first_seen_at": listing.first_seen_at,
-            "last_seen_at": listing.last_seen_at,
-        }
-
         stmt = pg_insert(ListingORM).values(**listing_values)
 
-        # On conflict, update last_seen_at and other mutable fields
+        # On conflict, update mutable fields
         stmt = stmt.on_conflict_do_update(
             constraint="uq_listing_src_ext",
             set_={
@@ -171,28 +105,31 @@ class DatabaseListingLoader:
                 "price_amount": stmt.excluded.price_amount,
                 "price_currency": stmt.excluded.price_currency,
                 "status": stmt.excluded.status,
-                "view_count": stmt.excluded.view_count,
                 "description": stmt.excluded.description,
-                "owner_id": stmt.excluded.owner_id,
+                "external_owner_id": stmt.excluded.external_owner_id,
+                "owner_name": stmt.excluded.owner_name,
+                "owner_type_declared": stmt.excluded.owner_type_declared,
+                "owner_contacts": stmt.excluded.owner_contacts,
+                "is_archived": stmt.excluded.is_archived,
+                "listing_updated_at": stmt.excluded.listing_updated_at,
             },
-        ).returning(ListingORM.id, ListingORM.created_at, ListingORM.updated_at)
+        ).returning(
+            ListingORM.created_at,
+            ListingORM.updated_at,
+            ListingORM.listing_created_at,
+            ListingORM.listing_updated_at,
+        )
 
         result = await self._session.execute(stmt)
         row = result.one()
-        listing_id = row.id
-        created_at = row.created_at
-        updated_at = row.updated_at
+
+        # Update listing with DB-generated values
+        listing.created_at = row.listing_created_at or row.created_at
+        listing.updated_at = row.listing_updated_at or row.updated_at
 
         # Save photos if present
         if listing.photos:
-            await self._save_photos(listing_id, listing.photos)
-
-        # Update listing with DB-generated values
-        listing.id = listing_id
-        listing.created_at = created_at
-        listing.updated_at = updated_at
-        if owner_id:
-            listing.owner_id = owner_id
+            await self._save_photos(listing.uuid, listing.photos)
 
         await self._session.commit()
 
@@ -206,30 +143,17 @@ class DatabaseListingLoader:
             raws: List of RawListings to save
 
         Returns:
-            List of RawListings with updated IDs
+            List of RawListings (unchanged)
         """
         if not raws:
             return []
 
         # Get or create source (assuming all from same source)
         source_code = raws[0].source_code
-        source = await self._get_or_create_source(source_code)
+        await self._get_or_create_source(source_code)
 
-        # Prepare bulk insert values
-        values = [
-            {
-                "source_id": source.id,
-                "external_id": raw.external_id,
-                "payload": raw.payload,
-                "schema_version": raw.schema_version,
-                "fetch_url": raw.fetch_url,
-                "fetched_at": raw.fetched_at,
-                "processing_status": raw.processing_status,
-                "processing_error": raw.processing_error,
-                "processed_at": raw.processed_at,
-            }
-            for raw in raws
-        ]
+        # Prepare bulk insert values using mapper
+        values = [RawListingMapper.to_orm_dict(raw) for raw in raws]
 
         # Build bulk insert with ON CONFLICT
         stmt = pg_insert(RawListingORM).values(values)
@@ -244,31 +168,12 @@ class DatabaseListingLoader:
                 "processing_error": stmt.excluded.processing_error,
                 "processed_at": stmt.excluded.processed_at,
             },
-        ).returning(RawListingORM.id, RawListingORM.external_id)
+        )
 
-        result = await self._session.execute(stmt)
-        rows = result.all()
-
+        await self._session.execute(stmt)
         await self._session.commit()
 
-        # Map IDs back to RawListings
-        id_map = {row.external_id: row.id for row in rows}
-
-        return [
-            RawListing(
-                raw_id=id_map.get(raw.external_id),
-                source_code=raw.source_code,
-                external_id=raw.external_id,
-                payload=raw.payload,
-                schema_version=raw.schema_version,
-                fetch_url=raw.fetch_url,
-                fetched_at=raw.fetched_at,
-                processing_status=raw.processing_status,
-                processing_error=raw.processing_error,
-                processed_at=raw.processed_at,
-            )
-            for raw in raws
-        ]
+        return raws
 
     async def bulk_save_listings(self, listings: list[Listing]) -> list[Listing]:
         """
@@ -278,74 +183,17 @@ class DatabaseListingLoader:
             listings: List of Listings to save
 
         Returns:
-            List of Listings with updated IDs and timestamps
+            List of Listings with updated timestamps
         """
         if not listings:
             return []
 
         # Get or create source (assuming all from same source)
         source_code = listings[0].source_code
-        source = await self._get_or_create_source(source_code)
+        await self._get_or_create_source(source_code)
 
-        # Process owners in bulk
-        for listing in listings:
-            if listing.owner_info and not listing.owner_id:
-                owner_id = await self._get_or_create_owner(listing.owner_info)
-                listing.owner_id = owner_id
-
-        # Prepare bulk insert values
-        values = []
-        for listing in listings:
-            location_wkb = None
-            if listing.location:
-                point = Point(listing.location.longitude, listing.location.latitude)
-                location_wkb = from_shape(point, srid=4326)
-
-            values.append(
-                {
-                    "source_code": source.code,
-                    "external_id": listing.external_id,
-                    "owner_id": listing.owner_id,
-                    "url": listing.url,
-                    "title": listing.title,
-                    "fingerprint": listing.fingerprint,
-                    "price_amount": listing.price.amount if listing.price else None,
-                    "price_currency": listing.price.currency if listing.price else None,
-                    "address_country": listing.address.country
-                    if listing.address
-                    else None,
-                    "address_state": listing.address.state if listing.address else None,
-                    "address_city": listing.address.city if listing.address else None,
-                    "address_district": listing.address.district
-                    if listing.address
-                    else None,
-                    "address_street": listing.address.street
-                    if listing.address
-                    else None,
-                    "address_building": listing.address.building
-                    if listing.address
-                    else None,
-                    "address_zip": listing.address.zip_code
-                    if listing.address
-                    else None,
-                    "location": location_wkb,
-                    "room_count": listing.room_count,
-                    "area": listing.area,
-                    "floor": listing.floor,
-                    "total_floors": listing.total_floors,
-                    "description": listing.description,
-                    "owner_name": listing.owner_info.name
-                    if listing.owner_info
-                    else None,
-                    "owner_type_declared": listing.owner_info.owner_type
-                    if listing.owner_info
-                    else None,
-                    "status": listing.status,
-                    "is_verified": listing.is_verified,
-                    "first_seen_at": listing.first_seen_at,
-                    "last_seen_at": listing.last_seen_at,
-                }
-            )
+        # Prepare bulk insert values using mapper
+        values = [ListingMapper.to_orm_dict(listing) for listing in listings]
 
         # Build bulk insert with ON CONFLICT
         stmt = pg_insert(ListingORM).values(values)
@@ -356,58 +204,112 @@ class DatabaseListingLoader:
                 "price_amount": stmt.excluded.price_amount,
                 "price_currency": stmt.excluded.price_currency,
                 "status": stmt.excluded.status,
-                "view_count": stmt.excluded.view_count,
                 "description": stmt.excluded.description,
-                "owner_id": stmt.excluded.owner_id,
+                "external_owner_id": stmt.excluded.external_owner_id,
+                "owner_name": stmt.excluded.owner_name,
+                "owner_type_declared": stmt.excluded.owner_type_declared,
+                "owner_contacts": stmt.excluded.owner_contacts,
+                "is_archived": stmt.excluded.is_archived,
+                "listing_updated_at": stmt.excluded.listing_updated_at,
             },
         ).returning(
             ListingORM.id,
-            ListingORM.external_id,
             ListingORM.created_at,
             ListingORM.updated_at,
+            ListingORM.listing_created_at,
+            ListingORM.listing_updated_at,
         )
 
         result = await self._session.execute(stmt)
         rows = result.all()
 
-        # Map IDs back to Listings
-        id_map = {
-            row.external_id: {
-                "id": row.id,
-                "created_at": row.created_at,
-                "updated_at": row.updated_at,
+        # Map timestamps back to Listings
+        timestamp_map = {
+            row.id: {
+                "created_at": row.listing_created_at or row.created_at,
+                "updated_at": row.listing_updated_at or row.updated_at,
             }
             for row in rows
         }
 
         # Update listings with DB values
         for listing in listings:
-            if listing.external_id in id_map:
-                data = id_map[listing.external_id]
-                listing.id = data["id"]
+            if listing.uuid in timestamp_map:
+                data = timestamp_map[listing.uuid]
                 listing.created_at = data["created_at"]
                 listing.updated_at = data["updated_at"]
 
-        # Save photos for each listing
-        for listing in listings:
-            if listing.photos and listing.id:
-                await self._save_photos(listing.id, listing.photos)
+        # Save photos for each listing in bulk
+        await self._bulk_save_all_photos(listings)
 
         await self._session.commit()
 
         return listings
 
+    async def get_listing_by_natural_key(
+        self, source_code: str, external_id: str
+    ) -> Listing | None:
+        """
+        Get a listing by its natural key (source_code, external_id).
+
+        Args:
+            source_code: Source code
+            external_id: External ID from source
+
+        Returns:
+            Listing if found, None otherwise
+        """
+        stmt = select(ListingORM).where(
+            ListingORM.source_code == source_code,
+            ListingORM.external_id == external_id,
+        )
+        result = await self._session.execute(stmt)
+        orm = result.scalar_one_or_none()
+
+        if orm is None:
+            return None
+
+        return ListingMapper.to_domain(orm)
+
+    async def get_listing_by_uuid(self, uuid: UUID) -> Listing | None:
+        """
+        Get a listing by UUID.
+
+        Args:
+            uuid: Listing UUID
+
+        Returns:
+            Listing if found, None otherwise
+        """
+        stmt = select(ListingORM).where(ListingORM.id == uuid)
+        result = await self._session.execute(stmt)
+        orm = result.scalar_one_or_none()
+
+        if orm is None:
+            return None
+
+        return ListingMapper.to_domain(orm)
+
     async def _get_or_create_source(self, source_code: str) -> SourceORM:
-        """Get or create a source by code."""
+        """
+        Get or create a source by code.
+
+        Args:
+            source_code: Source code to get or create
+
+        Returns:
+            SourceORM instance
+        """
         stmt = select(SourceORM).where(SourceORM.code == source_code)
         result = await self._session.execute(stmt)
         source = result.scalar_one_or_none()
 
         if source is None:
-            # Create new source
+            # Create new source with default values
             source = SourceORM(
                 code=source_code,
                 name=source_code.upper(),
+                type="website",
                 is_active=True,
             )
             self._session.add(source)
@@ -415,25 +317,60 @@ class DatabaseListingLoader:
 
         return source
 
-    async def _save_photos(self, listing_id: int, photos: list[Any]) -> None:
-        """Save photos for a listing, replacing old ones."""
-        # Delete existing photos
-        from sqlalchemy import delete
+    async def _save_photos(self, listing_uuid: UUID, photos: list[Any]) -> None:
+        """
+        Save photos for a listing, replacing old ones.
 
-        stmt = delete(ListingPhotoORM).where(ListingPhotoORM.listing_id == listing_id)
+        Args:
+            listing_uuid: UUID of the listing
+            photos: List of Image value objects
+        """
+        # Delete existing photos
+        stmt = delete(ListingPhotoORM).where(ListingPhotoORM.listing_id == listing_uuid)
         await self._session.execute(stmt)
 
-        # Insert new photos
+        # Insert new photos using mapper
         if photos:
             photo_values = [
-                {
-                    "listing_id": listing_id,
-                    "url": photo.url,
-                    "order": photo.order,
-                }
-                for photo in photos
+                ListingMapper.photo_to_orm_dict(listing_uuid, photo) for photo in photos
             ]
             stmt = insert(ListingPhotoORM).values(photo_values)
+            await self._session.execute(stmt)
+
+    async def _bulk_save_all_photos(self, listings: list[Listing]) -> None:
+        """
+        Save photos for multiple listings in bulk.
+
+        Args:
+            listings: List of Listing entities with photos
+        """
+        # Collect all listing UUIDs that have photos
+        listing_uuids_with_photos = [
+            listing.uuid for listing in listings if listing.photos
+        ]
+
+        if not listing_uuids_with_photos:
+            return
+
+        # Delete existing photos for all listings in one query
+        stmt = delete(ListingPhotoORM).where(
+            ListingPhotoORM.listing_id.in_(listing_uuids_with_photos)
+        )
+        await self._session.execute(stmt)
+
+        # Prepare all photo values for bulk insert
+        all_photo_values = []
+        for listing in listings:
+            if listing.photos:
+                photo_values = [
+                    ListingMapper.photo_to_orm_dict(listing.uuid, photo)
+                    for photo in listing.photos
+                ]
+                all_photo_values.extend(photo_values)
+
+        # Insert all photos in one query
+        if all_photo_values:
+            stmt = insert(ListingPhotoORM).values(all_photo_values)
             await self._session.execute(stmt)
 
 

@@ -1,11 +1,11 @@
 import json
+from datetime import datetime
 from typing import Mapping, Any, AsyncIterable
 
 from core.domain.ingest import RawListing
 from core.domain.client import Page, Request
 from core.ports.infra import HttpClient
 from core.domain.client import ListingResult
-from core.ports.policies import StopPolicy
 
 
 class DomRiaProvider:
@@ -42,12 +42,12 @@ class DomRiaProvider:
     def __init__(
         self,
         client: HttpClient,
-        stop_policy: StopPolicy | None = None,
         max_listings: int | None = None,
+        until_timestamp: int | None = None,
     ) -> None:
         self._client = client
-        self._stop_policy = stop_policy
         self._max_listings = max_listings or -1
+        self._until_timestamp = until_timestamp
         self._source_code = "domria"
         self._filters = self.DEFAULT_FILTERS
 
@@ -94,11 +94,19 @@ class DomRiaProvider:
             external_id=_id,
             payload=json.loads(data),
             fetch_url=resp.url,
+            schema_version="1.0",
+            fetched_at=datetime.now(),
         )
 
     async def _fetch_listings(self, ids: list[str]) -> AsyncIterable[RawListing]:
         for _id in ids:
             yield await self._fetch_listing(_id)
+
+    async def _check_until_timestamp(self, listing: RawListing) -> bool:
+        created_at = listing.payload.get("publishing_date_ts")
+        if created_at and self._until_timestamp:
+            return created_at < self._until_timestamp
+        return False
 
     async def fetch(
         self,
@@ -119,7 +127,7 @@ class DomRiaProvider:
                     self._max_listings -= 1
                     if self._max_listings == 0:
                         return
-                    if self._stop_policy and self._stop_policy.should_stop(listing):
+                    if await self._check_until_timestamp(listing):
                         return
                 if page.next_cursor is None:
                     return

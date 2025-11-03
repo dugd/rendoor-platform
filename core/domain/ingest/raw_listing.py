@@ -21,8 +21,8 @@ class RawListing:
     schema_version: str
     fetch_url: str | None
     fetched_at: datetime
-    processing_error: str | None
-    processed_at: datetime | None
+    processing_error: str | None = None
+    processed_at: datetime | None = None
     processing_status: RawStatus = "processing"
     uuid: UUID = uuid4()
 
