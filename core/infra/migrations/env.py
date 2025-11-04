@@ -55,7 +55,19 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    def include_name(name, type_, parent_names):
+        if type_ == "table":
+            return name in target_metadata.tables
+        return True
+
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        include_schemas=False,
+        include_name=include_name,  # type: ignore
+        compare_type=True,
+        compare_server_default=True,
+    )
 
     with context.begin_transaction():
         context.run_migrations()

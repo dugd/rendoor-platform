@@ -38,6 +38,13 @@ class TgUserORM(Model):
     username: Mapped[str | None] = mapped_column(String(64), index=True)
     first_name: Mapped[str | None] = mapped_column(String(128))
     last_name: Mapped[str | None] = mapped_column(String(128))
+    is_premium: Mapped[bool] = mapped_column(Boolean, default=False)
+    last_interaction: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        default=func.now(),
+        onupdate=func.now(),
+        index=True,
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(

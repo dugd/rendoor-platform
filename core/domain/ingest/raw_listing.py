@@ -1,5 +1,5 @@
 from uuid import UUID, uuid4
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 from datetime import datetime, timezone
 
@@ -21,10 +21,10 @@ class RawListing:
     schema_version: str
     fetch_url: str | None
     fetched_at: datetime
-    processing_error: str | None
-    processed_at: datetime | None
+    processing_error: str | None = None
+    processed_at: datetime | None = None
     processing_status: RawStatus = "processing"
-    uuid: UUID = uuid4()
+    uuid: UUID = field(default_factory=uuid4)
 
     @property
     def natural_key(self) -> tuple[str, str]:

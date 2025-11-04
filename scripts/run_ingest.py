@@ -14,6 +14,7 @@ from core.adapters.normalizers.domria import DomRiaNormalizer
 from core.adapters.loaders import DatabaseListingLoader
 from core.infra.http.builder import build_async_client
 from core.infra.db.context import init_db, get_session, shutdown_db
+from core.infra.repos.outbox_repository import OutboxRepository
 
 
 async def main():
@@ -27,11 +28,14 @@ async def main():
         client = await build_async_client("https://dom.ria.com")
         logger.info("HTTP client built successfully")
 
-        provider = DomRiaProvider(client=client, max_listings=20)
+        provider = DomRiaProvider(
+            client=client,
+            max_listings=10,
+        )
         normalizer = DomRiaNormalizer()
 
         async with get_session() as session:
-            loader = DatabaseListingLoader(session)
+            loader = DatabaseListingLoader(session, OutboxRepository(session))
 
             logger.info("ETL pipeline initialized")
 
@@ -48,7 +52,6 @@ async def main():
                     logger.error(
                         f"Failed to process listing ID: {raw_listing.uuid}, Error: {e}"
                     )
-
             await loader.bulk_save_raw(raw_listings)
             await loader.bulk_save_listings(listings)
 

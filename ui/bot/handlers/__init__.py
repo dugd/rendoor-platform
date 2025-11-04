@@ -1,5 +1,5 @@
 from aiogram import Router
-from . import start, menu, filter
+from . import filter, start, subscription, menu
 
 
 def get_main_router() -> Router:
@@ -7,6 +7,7 @@ def get_main_router() -> Router:
 
     main_router.include_router(start.router)
     main_router.include_router(filter.get_filter_router())
+    main_router.include_router(subscription.router)
     main_router.include_router(menu.router)
 
     return main_router

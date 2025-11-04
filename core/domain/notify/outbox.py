@@ -1,6 +1,6 @@
 from typing import Any
 from uuid import UUID, uuid4
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 
@@ -14,7 +14,7 @@ class OutboxMessage:
     processing_attempts: int = 0
     created_at: datetime = datetime.now(timezone.utc)
 
-    uuid: UUID = uuid4()
+    uuid: UUID = field(default_factory=uuid4)
 
     def mark_processed(self) -> "OutboxMessage":
         """Marks the message as processed"""
@@ -41,7 +41,7 @@ class OutboxMessage:
         """Creates a copy with updated fields"""
         return OutboxMessage(
             uuid=self.uuid,
-            aggregate_type=aggregate_id
+            aggregate_type=aggregate_type
             if aggregate_type is not None
             else self.aggregate_type,
             aggregate_id=aggregate_id
