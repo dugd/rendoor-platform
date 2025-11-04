@@ -75,12 +75,12 @@ def get_filter_card_kb(filter_id: UUID) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text="✏️ Редагувати", callback_data=f"filter_edit:{filter_id}"
+            text="✏️ Редагувати (не працює)", callback_data=f"filter_edit:{filter_id}"
         )
     )
     builder.row(
         InlineKeyboardButton(
-            text="🗑 Видалити", callback_data=f"filter_delete:{filter_id}"
+            text="🗑 Видалити (не працює)", callback_data=f"filter_delete:{filter_id}"
         )
     )
     builder.row(

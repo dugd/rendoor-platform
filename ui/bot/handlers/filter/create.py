@@ -235,7 +235,7 @@ async def skip_room_reply(message: Message, state: FSMContext):
     flow_msg_id = data.get("flow_message_id")
 
     await message.delete()
-    await state.update_data(price_max=None)
+    await state.update_data(rooms=list(ROOMS_OPTIONS))
     await state.set_state(FilterCreateStates.CONFIRM)
 
     confirmation_text = messages.FILTER_CONFIRM.format(
@@ -355,8 +355,11 @@ async def confirm_filter(
 """
 
     if is_active:
-        # Activate the filter (placeholder - will implement real logic later)
-        await filter_service.activate_filter(user.uuid, new_filter.id)
+        await filter_service.activate_filter(
+            user.uuid,
+            new_filter.id,
+            user.tg_chat_id,
+        )
 
         await callback.message.answer(
             filter_card + "\n" + messages.FILTER_CREATED_ACTIVATED,
