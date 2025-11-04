@@ -26,7 +26,9 @@ class SubscriptionMapper:
         )
 
     @staticmethod
-    def to_orm(subscription: Subscription, orm: SubscriptionORM | None = None) -> SubscriptionORM:
+    def to_orm(
+        subscription: Subscription, orm: SubscriptionORM | None = None
+    ) -> SubscriptionORM:
         """Convert Subscription domain entity to SubscriptionORM
 
         Args:
