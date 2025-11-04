@@ -9,7 +9,7 @@ from apps.worker.lifespan import get_loop
 
 
 @celery.task(bind=True)
-def run_ingest(self):
+def run_ingest(self, max_listings: int = 10):
     """Run the full ingest ETL pipeline"""
     loop = get_loop()
 
@@ -17,7 +17,7 @@ def run_ingest(self):
         client = await build_async_client("https://dom.ria.com")
         logger.info("HTTP client built successfully")
 
-        provider = DomRiaProvider(client=client, max_listings=20)
+        provider = DomRiaProvider(client=client, max_listings=max_listings)
         normalizer = DomRiaNormalizer()
 
         async with get_session() as session:
