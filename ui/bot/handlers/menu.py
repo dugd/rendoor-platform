@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from ui.bot.keyboards.reply import get_main_menu_kb
 from ui.bot.utils import messages
 from core.domain.user import TgUser
-from core.application.services import FilterService
+from core.services import FilterService
 
 router = Router(name="menu")
 

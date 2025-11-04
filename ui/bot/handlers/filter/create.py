@@ -29,7 +29,7 @@ from ui.bot.utils.helpers import (
     edit_flow_message_from_callback,
 )
 from core.domain.user import TgUser
-from core.application.services import FilterService
+from core.services import FilterService
 
 router = Router(name="filters_create")
 

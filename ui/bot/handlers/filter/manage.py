@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 
 from core.domain.user import TgUser
-from core.application.services import FilterService
+from core.services import FilterService
 
 from ui.bot.utils.formatters import format_price_range
 from ui.bot.utils.helpers import edit_flow_message_from_callback
