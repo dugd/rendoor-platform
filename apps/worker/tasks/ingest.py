@@ -4,8 +4,8 @@ from core.adapters import DomRiaProvider, DomRiaNormalizer, DatabaseListingLoade
 from core.infra.db import get_session
 from core.infra.http.builder import build_async_client
 
-from ..app import celery
-from ..lifespan import get_loop
+from apps.worker.app import celery
+from apps.worker.lifespan import get_loop
 
 
 @celery.task(bind=True)

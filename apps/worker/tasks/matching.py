@@ -4,8 +4,8 @@ from loguru import logger
 
 from core.services.matching_service import matches_filter, can_send_notification
 
-from ..app import celery, container
-from ..lifespan import get_loop
+from apps.worker.app import celery, container
+from apps.worker.lifespan import get_loop
 from .notify import send_notification
 
 
@@ -72,10 +72,7 @@ def match_listing_with_subscriptions(self, listing_id: str):
                         continue
 
                     # Queue notification task
-                    send_notification.delay(
-                        subscription.chat_id,
-                        str(listing.uuid)
-                    )
+                    send_notification.delay(subscription.chat_id, str(listing.uuid))
 
                     # Update last_sent_at timestamp
                     subscription.update_last_sent(datetime.now(timezone.utc))
@@ -88,9 +85,7 @@ def match_listing_with_subscriptions(self, listing_id: str):
                     )
 
                 except Exception as e:
-                    logger.error(
-                        f"Error matching subscription {subscription.id}: {e}"
-                    )
+                    logger.error(f"Error matching subscription {subscription.id}: {e}")
                     # Continue with other subscriptions
 
             # Commit all subscription updates
@@ -113,7 +108,4 @@ def match_listing_with_subscriptions(self, listing_id: str):
     except Exception as e:
         logger.error(f"Matching task failed for listing {listing_id}: {e}")
         # Retry the task with exponential backoff
-        raise self.retry(
-            exc=e,
-            countdown=60 * (2 ** self.request.retries)
-        )
+        raise self.retry(exc=e, countdown=60 * (2**self.request.retries))

@@ -93,6 +93,5 @@ class AppContainer:
         """
         Task-scope. Новий сеанс на кожний вхід. Репозиторії прив'язані до нього.
         """
-        async with self.infra.session_factory() as session:
-            async with uow_factory(session) as uow:
-                yield uow
+        async with uow_factory() as uow:
+            yield uow

@@ -3,8 +3,8 @@ from loguru import logger
 
 from core.domain.notify import ChatId
 
-from ..app import celery, container
-from ..lifespan import get_loop
+from apps.worker.app import celery, container
+from apps.worker.lifespan import get_loop
 
 
 @celery.task(bind=True, max_retries=3)
@@ -31,10 +31,7 @@ def send_notification(self, chat_id: int, listing_id: str):
 
             try:
                 # Send notification via Telegram
-                message_id = await notifier.send_listing(
-                    ChatId(chat_id),
-                    listing
-                )
+                message_id = await notifier.send_listing(ChatId(chat_id), listing)
                 logger.info(
                     f"Sent notification: listing_id={listing_id}, "
                     f"chat_id={chat_id}, message_id={message_id.value}"
@@ -45,9 +42,6 @@ def send_notification(self, chat_id: int, listing_id: str):
                     f"chat_id={chat_id}, error={e}"
                 )
                 # Retry the task with exponential backoff
-                raise self.retry(
-                    exc=e,
-                    countdown=60 * (2 ** self.request.retries)
-                )
+                raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
 
     return loop.run_until_complete(_send())
