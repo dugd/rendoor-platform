@@ -2,5 +2,6 @@ from .listing_repository import IListingRepository
 from .user_repository import IUserRepository
 from .filter_repository import IFilterRepository
 from .subscription_repository import ISubscriptionRepository
+from .outbox_repository import IOutboxRepository
 
-__all__ = ["IListingRepository", "IUserRepository", "IFilterRepository", "ISubscriptionRepository"]
+__all__ = ["IListingRepository", "IUserRepository", "IFilterRepository", "ISubscriptionRepository", "IOutboxRepository"]

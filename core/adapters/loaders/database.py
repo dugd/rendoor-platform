@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from core.domain.listing import Listing
 from core.domain.ingest import RawListing
+from core.domain.notify import OutboxMessage
 from core.infra.mappers import RawListingMapper, ListingMapper
 from core.infra.models import (
     SourceORM,
@@ -15,6 +16,7 @@ from core.infra.models import (
     ListingORM,
     ListingPhotoORM,
 )
+from core.ports.repos import IOutboxRepository
 
 
 class DatabaseListingLoader:
@@ -25,14 +27,16 @@ class DatabaseListingLoader:
     following the repository pattern.
     """
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, outbox_repo: IOutboxRepository | None = None):
         """
         Initialize the database loader.
 
         Args:
             session: SQLAlchemy async session for database operations
+            outbox_repo: Optional repository for outbox messages (for event notifications)
         """
         self._session = session
+        self._outbox_repo = outbox_repo
 
     async def save_raw(self, raw: RawListing) -> RawListing:
         """
@@ -124,6 +128,10 @@ class DatabaseListingLoader:
         result = await self._session.execute(stmt)
         row = result.one()
 
+        # Track if this was a new listing (INSERT) vs update
+        attempted_uuid = listing.uuid
+        is_new_listing = row.id == attempted_uuid
+
         # Update listing with DB-generated values
         listing.uuid = row.id
         listing.created_at = row.listing_created_at or row.created_at
@@ -132,6 +140,21 @@ class DatabaseListingLoader:
         # Save photos if present
         if listing.photos:
             await self._save_photos(listing.uuid, listing.photos)
+
+        # Create outbox message for new listing
+        if is_new_listing and self._outbox_repo:
+            outbox_msg = OutboxMessage(
+                message_type="listing.created",
+                aggregate_id=listing.uuid,
+                aggregate_type="listing",
+                payload={
+                    "source_code": listing.source_code,
+                    "external_id": listing.external_id,
+                    "price_amount": listing.price.amount,
+                    "price_currency": listing.price.currency,
+                },
+            )
+            await self._outbox_repo.save(outbox_msg)
 
         await self._session.commit()
 
@@ -242,7 +265,8 @@ class DatabaseListingLoader:
             for row in rows
         }
 
-        # Update listings with DB values
+        # Update listings with DB values and track new listings
+        new_listings = []
         for listing in listings:
             natural_key = listing.natural_key  # (source_code, external_id)
             if natural_key in new_values_map:
@@ -251,8 +275,31 @@ class DatabaseListingLoader:
                 listing.created_at = data["created_at"]
                 listing.updated_at = data["updated_at"]
 
+                # Check if this was a new listing (INSERT vs UPDATE)
+                # If returned UUID matches attempted UUID, it was an INSERT
+                if data["id"] == data["attempted_id"]:
+                    new_listings.append(listing)
+
         # Save photos for each listing in bulk
         await self._bulk_save_all_photos(listings)
+
+        # Create outbox messages for new listings
+        if new_listings and self._outbox_repo:
+            outbox_messages = [
+                OutboxMessage(
+                    message_type="listing.created",
+                    aggregate_id=listing.uuid,
+                    aggregate_type="listing",
+                    payload={
+                        "source_code": listing.source_code,
+                        "external_id": listing.external_id,
+                        "price_amount": listing.price.amount,
+                        "price_currency": listing.price.currency,
+                    },
+                )
+                for listing in new_listings
+            ]
+            await self._outbox_repo.bulk_save(outbox_messages)
 
         await self._session.commit()
 

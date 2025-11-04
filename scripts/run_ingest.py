@@ -14,6 +14,7 @@ from core.adapters.normalizers.domria import DomRiaNormalizer
 from core.adapters.loaders import DatabaseListingLoader
 from core.infra.http.builder import build_async_client
 from core.infra.db.context import init_db, get_session, shutdown_db
+from core.infra.repos.outbox_repository import OutboxRepository
 
 
 async def main():
@@ -29,13 +30,12 @@ async def main():
 
         provider = DomRiaProvider(
             client=client,
-            until_timestamp=1762197000,
-            max_listings=3,
+            max_listings=10,
         )
         normalizer = DomRiaNormalizer()
 
         async with get_session() as session:
-            loader = DatabaseListingLoader(session)
+            loader = DatabaseListingLoader(session, OutboxRepository(session))
 
             logger.info("ETL pipeline initialized")
 

@@ -41,7 +41,7 @@ class OutboxMessage:
         """Creates a copy with updated fields"""
         return OutboxMessage(
             uuid=self.uuid,
-            aggregate_type=aggregate_id
+            aggregate_type=aggregate_type
             if aggregate_type is not None
             else self.aggregate_type,
             aggregate_id=aggregate_id
