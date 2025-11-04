@@ -38,9 +38,14 @@ router = Router(name="filters_create")
 async def start_filter_creation(message: Message, state: FSMContext):
     await state.set_state(FilterCreateStates.CITY)
 
-    await message.answer(messages.FILTER_CREATION_STARTED, reply_markup=get_skip_kb())
+    await message.answer(
+        messages.FILTER_CREATION_STARTED,
+        reply_markup=get_skip_kb(),
+    )
 
-    msg = await message.answer(messages.FILTER_CREATE_CITY)
+    msg = await message.answer(
+        messages.FILTER_CREATE_CITY.format(cities=", ".join(ALLOWED_CITIES))
+    )
     await state.update_data(flow_message_id=msg.message_id)
 
 

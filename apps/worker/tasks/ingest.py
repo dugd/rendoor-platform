@@ -2,6 +2,7 @@ from loguru import logger
 
 from core.adapters import DomRiaProvider, DomRiaNormalizer, DatabaseListingLoader
 from core.infra.db import get_session
+from core.infra.repos import OutboxRepository
 from core.infra.http.builder import build_async_client
 
 from apps.worker.app import celery
@@ -21,7 +22,8 @@ def run_ingest(self, max_listings: int = 10):
         normalizer = DomRiaNormalizer()
 
         async with get_session() as session:
-            loader = DatabaseListingLoader(session)
+            outbox_repo = OutboxRepository(session)
+            loader = DatabaseListingLoader(session, outbox_repo)
 
             logger.info("ETL pipeline initialized")
 
