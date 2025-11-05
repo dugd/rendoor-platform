@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.infra.repos import UserRepository, FilterRepository, SubscriptionRepository
-from core.application.services import UserService, FilterService, SubscriptionService
+from core.services import UserService, FilterService, SubscriptionService
 
 
 class DIContainer:

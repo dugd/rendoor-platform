@@ -1,78 +1,47 @@
-from datetime import datetime, timezone
-
+from uuid import UUID
 from loguru import logger
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.infra.db.context import get_session
-from ..di import get_container
-from ..lifespan import get_loop
-from ..app import celery
-from .telegram import notify_admin_listing
+from core.domain.notify import ChatId
 
-HANDLERS = {
-    "listing.created": notify_admin_listing,
-}
+from apps.worker.app import celery, container
+from apps.worker.lifespan import get_loop
 
 
-async def _claim_batch(session: AsyncSession, batch: int = 100):
-    stmt = text("""
-               SELECT id, message_type, aggregate_type, aggregate_id, payload
-               FROM outbox_messages
-               WHERE processed_at IS NULL
-               ORDER BY id
-                   LIMIT :batch
-               """)
-    result = await session.execute(stmt, {"batch": batch})
-    return [dict(r) for r in result.mappings()]
+@celery.task(bind=True, max_retries=3)
+def send_notification(self, chat_id: int, listing_id: str):
+    """
+    Send notification to user via Telegram.
 
-
-async def _ack(session: AsyncSession, msg_id: int):
-    await session.execute(
-        text(
-            "UPDATE outbox_messages SET processed_at=:ts WHERE id=:id AND processed_at IS NULL"
-        ),
-        {"id": msg_id, "ts": datetime.now(timezone.utc)},
-    )
-
-
-async def _nack(session: AsyncSession, msg_id: int):
-    await session.execute(
-        text(
-            "UPDATE outbox_messages SET processing_attempts = processing_attempts + 1 WHERE id=:id"
-        ),
-        {"id": msg_id},
-    )
-
-
-@celery.task()
-def process_outbox(batch: int = 100):
-    container = get_container()
+    Args:
+        chat_id: Telegram chat ID to send notification to
+        listing_id: UUID of the listing to send
+    """
     loop = get_loop()
 
-    async def _run():
-        async with get_session() as session:
-            msgs = await _claim_batch(session, batch)
-            if not msgs:
-                return []
-            for m in msgs:
-                handler = HANDLERS.get(m["message_type"])
-                if not handler:
-                    logger.warning(
-                        "No handler for message type {type}", type=m["message_type"]
-                    )
-                    await _nack(session, m["id"])
-                    continue
-                try:
-                    await handler(container, int(m["aggregate_id"]))
-                    logger.info("Processed outbox message {id}", id=m["id"])
-                    await _ack(session, m["id"])
-                except Exception:
-                    logger.exception("Error processing outbox message {id}", id=m["id"])
-                    await _nack(session, m["id"])
-            await session.commit()
-            return msgs
+    async def _send():
+        async with container.uow() as uow:
+            # Load listing from database
+            listing = await uow.listings.get_by_id(UUID(listing_id))
+            if not listing:
+                logger.warning(f"Listing {listing_id} not found, skipping notification")
+                return
 
-    result = loop.run_until_complete(_run())
+            # Get notifier from container services
+            notifier = container.services.notifier
 
-    return len(result)
+            try:
+                # Send notification via Telegram
+                message_id = await notifier.send_listing(ChatId(chat_id), listing)
+                logger.info(
+                    f"Sent notification: listing_id={listing_id}, "
+                    f"chat_id={chat_id}, message_id={message_id.value}"
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to send notification: listing_id={listing_id}, "
+                    f"chat_id={chat_id}, error={e}"
+                )
+                # Retry the task with exponential backoff
+                raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
+
+    return loop.run_until_complete(_send())

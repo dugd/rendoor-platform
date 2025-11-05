@@ -30,7 +30,7 @@ async def main():
 
         provider = DomRiaProvider(
             client=client,
-            max_listings=10,
+            max_listings=20,
         )
         normalizer = DomRiaNormalizer()
 

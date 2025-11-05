@@ -29,7 +29,7 @@ from ui.bot.utils.helpers import (
     edit_flow_message_from_callback,
 )
 from core.domain.user import TgUser
-from core.application.services import FilterService
+from core.services import FilterService
 
 router = Router(name="filters_create")
 
@@ -38,9 +38,14 @@ router = Router(name="filters_create")
 async def start_filter_creation(message: Message, state: FSMContext):
     await state.set_state(FilterCreateStates.CITY)
 
-    await message.answer(messages.FILTER_CREATION_STARTED, reply_markup=get_skip_kb())
+    await message.answer(
+        messages.FILTER_CREATION_STARTED,
+        reply_markup=get_skip_kb(),
+    )
 
-    msg = await message.answer(messages.FILTER_CREATE_CITY)
+    msg = await message.answer(
+        messages.FILTER_CREATE_CITY.format(cities=", ".join(ALLOWED_CITIES))
+    )
     await state.update_data(flow_message_id=msg.message_id)
 
 
@@ -235,7 +240,7 @@ async def skip_room_reply(message: Message, state: FSMContext):
     flow_msg_id = data.get("flow_message_id")
 
     await message.delete()
-    await state.update_data(price_max=None)
+    await state.update_data(rooms=list(ROOMS_OPTIONS))
     await state.set_state(FilterCreateStates.CONFIRM)
 
     confirmation_text = messages.FILTER_CONFIRM.format(
@@ -355,8 +360,11 @@ async def confirm_filter(
 """
 
     if is_active:
-        # Activate the filter (placeholder - will implement real logic later)
-        await filter_service.activate_filter(user.uuid, new_filter.id)
+        await filter_service.activate_filter(
+            user.uuid,
+            new_filter.id,
+            user.tg_chat_id,
+        )
 
         await callback.message.answer(
             filter_card + "\n" + messages.FILTER_CREATED_ACTIVATED,

@@ -53,6 +53,14 @@ class SubscriptionRepository:
 
         return [SubscriptionMapper.to_domain(orm) for orm in orm_subscriptions]
 
+    async def get_all_active(self) -> list[Subscription]:
+        """Get all active subscriptions across all users"""
+        stmt = select(SubscriptionORM).where(SubscriptionORM.is_active == True)
+        result = await self._session.execute(stmt)
+        orm_subscriptions = result.scalars().all()
+
+        return [SubscriptionMapper.to_domain(orm) for orm in orm_subscriptions]
+
     async def get_active_by_user_id(self, user_id: UUID) -> Subscription | None:
         """Get the active subscription for a user (via filter relationship)"""
         stmt = (

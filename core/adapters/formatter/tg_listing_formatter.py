@@ -49,12 +49,13 @@ class TelegramListingFormatter:
             inline_keyboard=[
                 [
                     InlineKeyboardButton(
-                        text="⭐ Додати в обране", callback_data=f"fav_add:{listing.id}"
+                        text="⭐ Додати в обране",
+                        callback_data=f"fav_add:{listing.uuid}",
                     )
                 ],
                 [
                     InlineKeyboardButton(
-                        text="🚫 Приховати", callback_data=f"hide:{listing.id}"
+                        text="🚫 Приховати", callback_data=f"hide:{listing.uuid}"
                     )
                 ],
             ]

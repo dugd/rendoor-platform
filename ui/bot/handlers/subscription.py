@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from ui.bot.keyboards.reply import get_main_menu_kb, get_subscription_kb
 from ui.bot.states import SubscriptionStates
 from core.domain.user import TgUser
-from core.application.services import FilterService
+from core.services import FilterService
 
 router = Router(name="subscription")
 

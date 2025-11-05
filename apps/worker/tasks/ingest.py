@@ -2,14 +2,15 @@ from loguru import logger
 
 from core.adapters import DomRiaProvider, DomRiaNormalizer, DatabaseListingLoader
 from core.infra.db import get_session
+from core.infra.repos import OutboxRepository
 from core.infra.http.builder import build_async_client
 
-from ..app import celery
-from ..lifespan import get_loop
+from apps.worker.app import celery
+from apps.worker.lifespan import get_loop
 
 
 @celery.task(bind=True)
-def run_ingest(self):
+def run_ingest(self, max_listings: int = 10):
     """Run the full ingest ETL pipeline"""
     loop = get_loop()
 
@@ -17,11 +18,12 @@ def run_ingest(self):
         client = await build_async_client("https://dom.ria.com")
         logger.info("HTTP client built successfully")
 
-        provider = DomRiaProvider(client=client, max_listings=20)
+        provider = DomRiaProvider(client=client, max_listings=max_listings)
         normalizer = DomRiaNormalizer()
 
         async with get_session() as session:
-            loader = DatabaseListingLoader(session)
+            outbox_repo = OutboxRepository(session)
+            loader = DatabaseListingLoader(session, outbox_repo)
 
             logger.info("ETL pipeline initialized")
 
