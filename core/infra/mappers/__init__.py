@@ -4,6 +4,7 @@ from .subscription_mapper import SubscriptionMapper
 from .raw_listing_mapper import RawListingMapper
 from .listing_mapper import ListingMapper
 from .outbox_mapper import OutboxMapper
+from .favorite_mapper import FavoriteMapper
 
 __all__ = [
     "UserMapper",
@@ -12,4 +13,5 @@ __all__ = [
     "RawListingMapper",
     "ListingMapper",
     "OutboxMapper",
+    "FavoriteMapper",
 ]

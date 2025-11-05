@@ -3,6 +3,7 @@ from .user_repository import UserRepository
 from .filter_repository import FilterRepository
 from .subscription_repository import SubscriptionRepository
 from .outbox_repository import OutboxRepository
+from .favorite_repository import FavoriteRepository
 
 __all__ = [
     "ListingRepository",
@@ -10,4 +11,5 @@ __all__ = [
     "FilterRepository",
     "SubscriptionRepository",
     "OutboxRepository",
+    "FavoriteRepository",
 ]
