@@ -14,6 +14,10 @@ class ListingFormatter(Protocol):
         """
         ...
 
+    def format_favorite_short(self, listing: Listing, index: int) -> str:
+        """Format listing for compact favorites list"""
+        ...
+
     def format_short(self, listing: Listing) -> str:
         """Short text representation of the listing."""
         ...

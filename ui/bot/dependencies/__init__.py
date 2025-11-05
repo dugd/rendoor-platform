@@ -5,6 +5,7 @@ from core.infra.repos import (
     FilterRepository,
     SubscriptionRepository,
     FavoriteRepository,
+    ListingRepository,
 )
 from core.services import (
     UserService,
@@ -32,6 +33,10 @@ class DIContainer:
     @staticmethod
     def get_favorite_repository(session: AsyncSession) -> FavoriteRepository:
         return FavoriteRepository(session)
+
+    @staticmethod
+    def get_listing_repository(session: AsyncSession) -> ListingRepository:
+        return ListingRepository(session)
 
     @staticmethod
     def get_user_service(session: AsyncSession) -> UserService:
