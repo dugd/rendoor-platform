@@ -90,3 +90,29 @@ def get_filter_card_kb(filter_id: UUID) -> InlineKeyboardMarkup:
     )
     builder.row(InlineKeyboardButton(text="⬅️ Назад", callback_data="filter_back"))
     return builder.as_markup()
+
+
+def get_listing_actions_kb(listing_id: UUID) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text="⭐ Додати в обране", callback_data=f"fav_add:{listing_id}"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(text="🚫 Приховати", callback_data=f"hide:{listing_id}")
+    )
+    return builder.as_markup()
+
+
+def get_listing_fav_actions_kb(listing_id: UUID) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text="❌ Видалити з обраного", callback_data=f"fav_remove:{listing_id}"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(text="🚫 Приховати", callback_data=f"hide:{listing_id}")
+    )
+    return builder.as_markup()
