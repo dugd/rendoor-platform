@@ -21,13 +21,13 @@ class Favorite:
         return self._uuid
 
     @property
-    def tg_user_id(self) -> int:
+    def tg_user_id(self) -> UUID:
         return self._tg_user_id
 
     @property
-    def item_id(self) -> int:
-        return self._item_id
+    def listing_id(self) -> UUID:
+        return self._listing_id
 
     @property
-    def added_at(self) -> datetime:
-        return self._added_at
+    def created_at(self) -> datetime:
+        return self._created_at

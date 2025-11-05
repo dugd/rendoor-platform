@@ -19,6 +19,7 @@ from core.infra.db import Model
 
 if TYPE_CHECKING:
     from .notify import SubscriptionORM
+    from .core import ListingORM
 
 
 class TgUserORM(Model):
@@ -114,11 +115,12 @@ class FavoriteORM(Model):
         ForeignKey("tg_users.id", ondelete="CASCADE")
     )
     listing_id: Mapped[UUIDType] = mapped_column(
-        ForeignKey("tg_users.id", ondelete="CASCADE")
+        ForeignKey("listings.id", ondelete="CASCADE")
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
     )
 
-    user: Mapped["TgUserORM"] = relationship("TgUserORM")
+    user: Mapped["TgUserORM"] = relationship("TgUserORM", back_populates="favorites")
+    listing: Mapped["ListingORM"] = relationship("ListingORM")

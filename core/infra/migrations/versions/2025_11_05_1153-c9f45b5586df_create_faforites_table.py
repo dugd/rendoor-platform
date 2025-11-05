@@ -26,7 +26,7 @@ def upgrade() -> None:
     sa.Column('tg_user_id', sa.UUID(), nullable=False),
     sa.Column('listing_id', sa.UUID(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.ForeignKeyConstraint(['listing_id'], ['tg_users.id'], name=op.f('favorites_listing_id_fkey'), ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['listing_id'], ['listings.id'], name=op.f('favorites_listing_id_fkey'), ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['tg_user_id'], ['tg_users.id'], name=op.f('favorites_tg_user_id_fkey'), ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id', name=op.f('favorites_pkey'))
     )
