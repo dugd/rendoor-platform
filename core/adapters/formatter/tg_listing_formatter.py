@@ -16,6 +16,11 @@ class TelegramListingFormatter:
     def format_short(self, listing: Listing) -> str:
         return f"🏠 {listing.title}\n💰 {listing.price.amount} {listing.price.currency}/міс"
 
+    def format_favorite_short(self, listing: Listing, index: int) -> str:
+        """Format listing for compact favorites list"""
+        price_str = f"{listing.price.amount} {listing.price.currency}/міс" if listing.price else "Ціна не вказана"
+        return f"{index}. 🏠 {listing.title} • {price_str}"
+
     def _build_text(self, listing: Listing) -> str:
         parts = [
             f"<b>{listing.title}</b>",

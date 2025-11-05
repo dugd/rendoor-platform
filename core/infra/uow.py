@@ -8,6 +8,7 @@ from core.infra.repos import (
     FilterRepository,
     SubscriptionRepository,
     OutboxRepository,
+    FavoriteRepository,
 )
 
 
@@ -19,6 +20,7 @@ class SqlAlchemyUoW(IUnitOfWork):
         self.filters = FilterRepository(session)
         self.subscriptions = SubscriptionRepository(session)
         self.outbox = OutboxRepository(session)
+        self.favorites = FavoriteRepository(session)
 
     async def __aenter__(self):
         return self

@@ -90,3 +90,106 @@ def get_filter_card_kb(filter_id: UUID) -> InlineKeyboardMarkup:
     )
     builder.row(InlineKeyboardButton(text="⬅️ Назад", callback_data="filter_back"))
     return builder.as_markup()
+
+
+def get_listing_actions_kb(listing_id: UUID) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text="⭐ Додати в обране", callback_data=f"fav_add:{listing_id}"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(text="🚫 Приховати", callback_data=f"hide:{listing_id}")
+    )
+    return builder.as_markup()
+
+
+def get_listing_fav_actions_kb(listing_id: UUID) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text="❌ Видалити з обраного", callback_data=f"fav_remove:{listing_id}"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(text="🚫 Приховати", callback_data=f"hide:{listing_id}")
+    )
+    return builder.as_markup()
+
+
+def get_favorites_list_kb(
+    favorites_with_listings: list[tuple],
+    page: int,
+    total_pages: int,
+) -> InlineKeyboardMarkup:
+    """
+    Build favorites list keyboard with pagination.
+
+    Args:
+        favorites_with_listings: List of (favorite, listing) tuples
+        page: Current page number (1-indexed)
+        total_pages: Total number of pages
+    """
+    builder = InlineKeyboardBuilder()
+
+    # Add listing buttons (one per row for compact list)
+    for favorite, listing in favorites_with_listings:
+        builder.row(
+            InlineKeyboardButton(
+                text=f"🏠 {listing.title}",
+                callback_data=f"fav_open:{listing.uuid}:{page}",
+            )
+        )
+
+    # Add pagination controls if multiple pages
+    if total_pages > 1:
+        pagination_buttons = []
+
+        if page > 1:
+            pagination_buttons.append(
+                InlineKeyboardButton(text="◀️ Назад", callback_data=f"fav_page:{page - 1}")
+            )
+
+        # Page indicator (non-clickable, but we can make it clickable with callback that does nothing)
+        pagination_buttons.append(
+            InlineKeyboardButton(
+                text=f"Сторінка {page}/{total_pages}",
+                callback_data=f"fav_page_indicator:{page}",
+            )
+        )
+
+        if page < total_pages:
+            pagination_buttons.append(
+                InlineKeyboardButton(text="Вперед ▶️", callback_data=f"fav_page:{page + 1}")
+            )
+
+        builder.row(*pagination_buttons)
+
+    return builder.as_markup()
+
+
+def get_favorite_detail_kb(listing_id: UUID, page: int) -> InlineKeyboardMarkup:
+    """
+    Build keyboard for favorite detail view.
+
+    Args:
+        listing_id: UUID of the listing
+        page: Current page number to return to
+    """
+    builder = InlineKeyboardBuilder()
+
+    builder.row(
+        InlineKeyboardButton(
+            text="🗑 Видалити з обраного",
+            callback_data=f"fav_remove:{listing_id}:{page}",
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="⬅️ Назад до списку",
+            callback_data=f"fav_back:{page}",
+        )
+    )
+
+    return builder.as_markup()

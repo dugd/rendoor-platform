@@ -110,4 +110,14 @@ async def stop_subscription(
     )
 
 
+@router.callback_query(F.data.startswith("hide:"))
+async def hide_listing_in_subscription(
+    callback: CallbackQuery,
+):
+    """
+    Hide listing message in subscription mode.
+    """
+    await callback.message.delete()
+
+
 __all__ = ["router"]

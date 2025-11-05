@@ -42,6 +42,9 @@ class DependencyInjectionMiddleware(BaseMiddleware):
         if session:
             data["user_service"] = DIContainer.get_user_service(session)
             data["filter_service"] = DIContainer.get_filter_service(session)
+            data["subscription_service"] = DIContainer.get_subscription_service(session)
+            data["favorite_service"] = DIContainer.get_favorite_service(session)
+            data["listing_repository"] = DIContainer.get_listing_repository(session)
 
         return await handler(event, data)
 

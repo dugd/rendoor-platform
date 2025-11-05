@@ -19,6 +19,7 @@ from core.infra.db import Model
 
 if TYPE_CHECKING:
     from .notify import SubscriptionORM
+    from .core import ListingORM
 
 
 class TgUserORM(Model):
@@ -61,6 +62,12 @@ class TgUserORM(Model):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    favorites: Mapped[list["FavoriteORM"]] = relationship(
+        "FavoriteORM",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class FilterORM(Model):
@@ -94,3 +101,26 @@ class FilterORM(Model):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+
+class FavoriteORM(Model):
+    __tablename__ = "favorites"
+
+    id: Mapped[UUIDType] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    tg_user_id: Mapped[UUIDType] = mapped_column(
+        ForeignKey("tg_users.id", ondelete="CASCADE")
+    )
+    listing_id: Mapped[UUIDType] = mapped_column(
+        ForeignKey("listings.id", ondelete="CASCADE")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+    user: Mapped["TgUserORM"] = relationship("TgUserORM", back_populates="favorites")
+    listing: Mapped["ListingORM"] = relationship("ListingORM")
