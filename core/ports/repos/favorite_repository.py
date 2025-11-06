@@ -1,5 +1,6 @@
 from typing import Protocol
 from uuid import UUID
+from datetime import datetime
 
 from core.domain.user import Favorite
 
@@ -29,4 +30,12 @@ class IFavoriteRepository(Protocol):
         self, user_id: UUID, limit: int = 50, offset: int = 0
     ) -> list[Favorite]:
         """Get all favorites for a user with pagination"""
+        ...
+
+    async def get_total_count(
+        self,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+    ) -> int:
+        """Get total count of all favorites"""
         ...

@@ -1,12 +1,14 @@
 from uuid import UUID
+from datetime import datetime
 
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.domain.user import Filter
 from core.infra.models.user import FilterORM
 from core.infra.models.notify import SubscriptionORM
 from core.infra.mappers import FilterMapper
+from core.ports.repos.filter_repository import FilterCityStats
 
 
 class FilterRepository:
@@ -74,3 +76,51 @@ class FilterRepository:
         stmt = delete(FilterORM).where(FilterORM.id == filter_id)
         await self._session.execute(stmt)
         await self._session.flush()
+
+    # ========= Statistics =========
+
+    async def get_popular_cities(
+        self,
+        limit: int = 10,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+    ) -> list[FilterCityStats]:
+        """Get most popular cities in filters"""
+        # Extract city from JSONB criteria field
+        # Assumes structure: {"location": {"city": "Київ"}}
+        query = select(
+            func.jsonb_extract_path_text(FilterORM.criteria, "location", "city").label(
+                "city"
+            ),
+            func.count(FilterORM.id).label("count"),
+        ).where(
+            func.jsonb_extract_path_text(FilterORM.criteria, "location", "city").isnot(
+                None
+            )
+        )
+
+        conditions = []
+        if created_after:
+            conditions.append(FilterORM.created_at >= created_after)
+        if created_before:
+            conditions.append(FilterORM.created_at <= created_before)
+
+        if conditions:
+            query = query.where(and_(*conditions))
+
+        query = (
+            query.group_by(
+                func.jsonb_extract_path_text(FilterORM.criteria, "location", "city")
+            )
+            .order_by(func.count(FilterORM.id).desc())
+            .limit(limit)
+        )
+
+        result = await self._session.execute(query)
+        rows = result.all()
+
+        return [
+            FilterCityStats(city=row.city, count=row.count)
+            for row in rows
+            if row.city  # Filter out None values
+        ]

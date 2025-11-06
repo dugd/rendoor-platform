@@ -1,6 +1,7 @@
 from uuid import UUID
+from datetime import datetime
 
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.domain.user import Favorite
@@ -80,3 +81,25 @@ class FavoriteRepository:
         orm_favorites = result.scalars().all()
 
         return [FavoriteMapper.to_domain(orm) for orm in orm_favorites]
+
+    # ========= Statistics =========
+
+    async def get_total_count(
+        self,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+    ) -> int:
+        """Get total count of all favorites"""
+        query = select(func.count(FavoriteORM.id))
+
+        conditions = []
+        if created_after:
+            conditions.append(FavoriteORM.created_at >= created_after)
+        if created_before:
+            conditions.append(FavoriteORM.created_at <= created_before)
+
+        if conditions:
+            query = query.where(and_(*conditions))
+
+        result = await self._session.execute(query)
+        return result.scalar_one()
