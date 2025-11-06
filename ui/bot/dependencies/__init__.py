@@ -12,6 +12,7 @@ from core.services import (
     FilterService,
     SubscriptionService,
     FavoriteService,
+    StatisticsService,
 )
 
 
@@ -58,6 +59,17 @@ class DIContainer:
     def get_favorite_service(session: AsyncSession) -> FavoriteService:
         favorite_repo = DIContainer.get_favorite_repository(session)
         return FavoriteService(favorite_repo)
+
+    @staticmethod
+    def get_statistics_service(session: AsyncSession) -> StatisticsService:
+        user_repo = DIContainer.get_user_repository(session)
+        listing_repo = DIContainer.get_listing_repository(session)
+        filter_repo = DIContainer.get_filter_repository(session)
+        subscription_repo = DIContainer.get_subscription_repository(session)
+        favorite_repo = DIContainer.get_favorite_repository(session)
+        return StatisticsService(
+            user_repo, listing_repo, filter_repo, subscription_repo, favorite_repo
+        )
 
 
 __all__ = [

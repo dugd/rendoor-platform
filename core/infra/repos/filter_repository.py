@@ -3,6 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import select, delete, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.dialects import postgresql
 
 from core.domain.user import Filter
 from core.infra.models.user import FilterORM
@@ -61,7 +62,7 @@ class FilterRepository:
             select(FilterORM)
             .join(SubscriptionORM, FilterORM.id == SubscriptionORM.filter_id)
             .where(FilterORM.tg_user_id == user_id)
-            .where(SubscriptionORM.is_active == True)
+            .where(SubscriptionORM.is_active)
         )
         result = await self._session.execute(stmt)
         orm_filter = result.scalar_one_or_none()
@@ -86,18 +87,35 @@ class FilterRepository:
         created_before: datetime | None = None,
     ) -> list[FilterCityStats]:
         """Get most popular cities in filters"""
-        # Extract city from JSONB criteria field
-        # Assumes structure: {"location": {"city": "Київ"}}
-        query = select(
-            func.jsonb_extract_path_text(FilterORM.criteria, "location", "city").label(
-                "city"
-            ),
-            func.count(FilterORM.id).label("count"),
-        ).where(
-            func.jsonb_extract_path_text(FilterORM.criteria, "location", "city").isnot(
-                None
-            )
-        )
+        city_expr = func.jsonb_extract_path_text(
+            FilterORM.criteria.cast(postgresql.JSONB), "location", "city"
+        ).label("city")
+
+        count_expr = func.count(FilterORM.id).label("count")
+
+        query = select(city_expr, count_expr).where(city_expr.isnot(None))
+
+        if created_after:
+            query = query.where(FilterORM.created_at >= created_after)
+        if created_before:
+            query = query.where(FilterORM.created_at <= created_before)
+
+        query = query.group_by(city_expr).order_by(count_expr.desc()).limit(limit)
+
+        result = await self._session.execute(query)
+        rows = result.all()
+
+        return [
+            FilterCityStats(city=row.city, count=row.count) for row in rows if row.city
+        ]
+
+    async def get_total_count(
+        self,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+    ) -> int:
+        """Get total count of filters"""
+        query = select(func.count(FilterORM.id))
 
         conditions = []
         if created_after:
@@ -108,19 +126,5 @@ class FilterRepository:
         if conditions:
             query = query.where(and_(*conditions))
 
-        query = (
-            query.group_by(
-                func.jsonb_extract_path_text(FilterORM.criteria, "location", "city")
-            )
-            .order_by(func.count(FilterORM.id).desc())
-            .limit(limit)
-        )
-
         result = await self._session.execute(query)
-        rows = result.all()
-
-        return [
-            FilterCityStats(city=row.city, count=row.count)
-            for row in rows
-            if row.city  # Filter out None values
-        ]
+        return result.scalar_one()

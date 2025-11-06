@@ -147,7 +147,7 @@ class ListingRepository:
 
         conditions = []
         if only_active:
-            conditions.append(not ListingORM.is_archived)
+            conditions.append(~ListingORM.is_archived)
         if created_after:
             conditions.append(ListingORM.created_at >= created_after)
         if created_before:
@@ -186,7 +186,7 @@ class ListingRepository:
 
         conditions = []
         if only_active:
-            conditions.append(not ListingORM.is_archived)
+            conditions.append(~ListingORM.is_archived)
         if city:
             conditions.append(ListingORM.address_city == city)
         if created_after:

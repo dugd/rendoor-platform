@@ -45,3 +45,11 @@ class IFilterRepository(Protocol):
     ) -> list[FilterCityStats]:
         """Get most popular cities in filters"""
         ...
+
+    async def get_total_count(
+        self,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+    ) -> int:
+        """Get total count of filters"""
+        ...
