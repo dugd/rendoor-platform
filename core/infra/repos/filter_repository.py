@@ -1,12 +1,15 @@
 from uuid import UUID
+from datetime import datetime
 
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.dialects import postgresql
 
 from core.domain.user import Filter
 from core.infra.models.user import FilterORM
 from core.infra.models.notify import SubscriptionORM
 from core.infra.mappers import FilterMapper
+from core.ports.repos.filter_repository import FilterCityStats
 
 
 class FilterRepository:
@@ -59,7 +62,7 @@ class FilterRepository:
             select(FilterORM)
             .join(SubscriptionORM, FilterORM.id == SubscriptionORM.filter_id)
             .where(FilterORM.tg_user_id == user_id)
-            .where(SubscriptionORM.is_active == True)
+            .where(SubscriptionORM.is_active)
         )
         result = await self._session.execute(stmt)
         orm_filter = result.scalar_one_or_none()
@@ -74,3 +77,54 @@ class FilterRepository:
         stmt = delete(FilterORM).where(FilterORM.id == filter_id)
         await self._session.execute(stmt)
         await self._session.flush()
+
+    # ========= Statistics =========
+
+    async def get_popular_cities(
+        self,
+        limit: int = 10,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+    ) -> list[FilterCityStats]:
+        """Get most popular cities in filters"""
+        city_expr = func.jsonb_extract_path_text(
+            FilterORM.criteria.cast(postgresql.JSONB), "location", "city"
+        ).label("city")
+
+        count_expr = func.count(FilterORM.id).label("count")
+
+        query = select(city_expr, count_expr).where(city_expr.isnot(None))
+
+        if created_after:
+            query = query.where(FilterORM.created_at >= created_after)
+        if created_before:
+            query = query.where(FilterORM.created_at <= created_before)
+
+        query = query.group_by(city_expr).order_by(count_expr.desc()).limit(limit)
+
+        result = await self._session.execute(query)
+        rows = result.all()
+
+        return [
+            FilterCityStats(city=row.city, count=row.count) for row in rows if row.city
+        ]
+
+    async def get_total_count(
+        self,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+    ) -> int:
+        """Get total count of filters"""
+        query = select(func.count(FilterORM.id))
+
+        conditions = []
+        if created_after:
+            conditions.append(FilterORM.created_at >= created_after)
+        if created_before:
+            conditions.append(FilterORM.created_at <= created_before)
+
+        if conditions:
+            query = query.where(and_(*conditions))
+
+        result = await self._session.execute(query)
+        return result.scalar_one()

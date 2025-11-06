@@ -1,5 +1,6 @@
 from typing import Protocol
 from uuid import UUID
+from datetime import datetime
 
 from core.domain.notify import Subscription
 
@@ -33,4 +34,28 @@ class ISubscriptionRepository(Protocol):
 
     async def delete(self, subscription_id: UUID) -> None:
         """Delete a subscription"""
+        ...
+
+    async def get_active_count(
+        self,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+    ) -> int:
+        """Get count of active subscriptions
+
+        Args:
+            created_after: Only count subscriptions created after this datetime (optional)
+            created_before: Only count subscriptions created before this datetime (optional)
+
+        Returns:
+            Count of active subscriptions across all users
+        """
+        ...
+
+    async def get_total_count(
+        self,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+    ) -> int:
+        """Get total count of all subscriptions"""
         ...

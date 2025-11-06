@@ -193,3 +193,57 @@ def get_favorite_detail_kb(listing_id: UUID, page: int) -> InlineKeyboardMarkup:
     )
 
     return builder.as_markup()
+
+
+def get_stats_navigation_kb() -> InlineKeyboardMarkup:
+    """Build keyboard for user statistics with button to view platform stats"""
+    builder = InlineKeyboardBuilder()
+
+    builder.row(
+        InlineKeyboardButton(
+            text="📈 Переглянути статистику платформи",
+            callback_data="stats:platform:7",
+        )
+    )
+
+    return builder.as_markup()
+
+
+def get_platform_stats_kb(period: str = "7") -> InlineKeyboardMarkup:
+    """
+    Build keyboard for platform statistics with period selection.
+
+    Args:
+        period: Current selected period ("1" for 24h, "7" for week, "30" for month)
+    """
+    builder = InlineKeyboardBuilder()
+
+    # Period selection buttons
+    period_buttons = []
+
+    # 24 hours button
+    text_24h = "• 24 год •" if period == "1" else "24 год"
+    period_buttons.append(
+        InlineKeyboardButton(text=text_24h, callback_data="stats:platform:1")
+    )
+
+    # Week button
+    text_week = "• Тиждень •" if period == "7" else "Тиждень"
+    period_buttons.append(
+        InlineKeyboardButton(text=text_week, callback_data="stats:platform:7")
+    )
+
+    # 30 days button
+    text_30d = "• 30 днів •" if period == "30" else "30 днів"
+    period_buttons.append(
+        InlineKeyboardButton(text=text_30d, callback_data="stats:platform:30")
+    )
+
+    builder.row(*period_buttons)
+
+    # Back button
+    builder.row(
+        InlineKeyboardButton(text="⬅️ Назад до моєї статистики", callback_data="stats:user")
+    )
+
+    return builder.as_markup()

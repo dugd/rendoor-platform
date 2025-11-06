@@ -42,6 +42,7 @@ async def main():
             # Run the pipeline
             raw_listings = []
             listings = []
+            failed_ids = []
             async for listing_result in provider.fetch():
                 raw_listing = listing_result.listing
                 raw_listings.append(raw_listing)
@@ -49,11 +50,31 @@ async def main():
                     normalized_listing = await normalizer.normalize(raw_listing)
                     listings.append(normalized_listing)
                 except Exception as e:
+                    failed_id = getattr(raw_listing, "uuid", None)
+                    failed_ids.append(failed_id)
                     logger.error(
-                        f"Failed to process listing ID: {raw_listing.uuid}, Error: {e}"
+                        f"Failed to process listing ID: {failed_id}, Error: {e}"
                     )
-            await loader.bulk_save_raw(raw_listings)
-            await loader.bulk_save_listings(listings)
+
+            # Stats before saving
+            total_raw = len(raw_listings)
+            total_normalized = len(listings)
+            total_failed = len(failed_ids)
+            logger.info(
+                f"ETL stats - Fetched: {total_raw}, Normalized: {total_normalized}, Failed: {total_failed}"
+            )
+
+            # Persist data
+            if raw_listings:
+                await loader.bulk_save_raw(raw_listings)
+                logger.info(f"Saved {total_raw} raw listings to database")
+            if listings:
+                await loader.bulk_save_listings(listings)
+                logger.info(f"Saved {total_normalized} normalized listings to database")
+
+            # Detailed failure log (ids)
+            if failed_ids:
+                logger.warning(f"Failed listing IDs: {failed_ids}")
 
             logger.success("ETL pipeline completed successfully!")
 

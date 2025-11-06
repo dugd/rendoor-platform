@@ -1,11 +1,13 @@
 from typing import Any
-from sqlalchemy import select, delete
+from datetime import datetime
+from sqlalchemy import select, delete, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core.domain.listing import Listing
 from core.infra.models import ListingORM, ListingPhotoORM
 from core.infra.mappers import ListingMapper
+from core.ports.repos.listing_repository import ListingStatsByCity
 
 
 class ListingRepository:
@@ -125,3 +127,75 @@ class ListingRepository:
                 self._session.add(
                     ListingPhotoORM(**ListingMapper.photo_to_orm_dict(listing_id, img))
                 )
+
+    # ========= Statistics =========
+
+    async def get_stats_by_city(
+        self,
+        only_active: bool = True,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+    ) -> list[ListingStatsByCity]:
+        """Get statistics grouped by city"""
+        query = select(
+            ListingORM.address_city.label("city"),
+            func.count(ListingORM.id).label("count"),
+            func.avg(ListingORM.price_amount).label("avg_price"),
+            func.min(ListingORM.price_amount).label("min_price"),
+            func.max(ListingORM.price_amount).label("max_price"),
+        ).where(ListingORM.address_city.isnot(None))
+
+        conditions = []
+        if only_active:
+            conditions.append(~ListingORM.is_archived)
+        if created_after:
+            conditions.append(ListingORM.created_at >= created_after)
+        if created_before:
+            conditions.append(ListingORM.created_at <= created_before)
+
+        if conditions:
+            query = query.where(and_(*conditions))
+
+        query = query.group_by(ListingORM.address_city).order_by(
+            func.count(ListingORM.id).desc()
+        )
+
+        result = await self._session.execute(query)
+        rows = result.all()
+
+        return [
+            ListingStatsByCity(
+                city=row.city,
+                count=row.count,
+                avg_price=float(row.avg_price) if row.avg_price else None,
+                min_price=float(row.min_price) if row.min_price else None,
+                max_price=float(row.max_price) if row.max_price else None,
+            )
+            for row in rows
+        ]
+
+    async def get_total_count(
+        self,
+        city: str | None = None,
+        only_active: bool = True,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+    ) -> int:
+        """Get total count of listings with optional filters"""
+        query = select(func.count(ListingORM.id))
+
+        conditions = []
+        if only_active:
+            conditions.append(~ListingORM.is_archived)
+        if city:
+            conditions.append(ListingORM.address_city == city)
+        if created_after:
+            conditions.append(ListingORM.created_at >= created_after)
+        if created_before:
+            conditions.append(ListingORM.created_at <= created_before)
+
+        if conditions:
+            query = query.where(and_(*conditions))
+
+        result = await self._session.execute(query)
+        return result.scalar_one()

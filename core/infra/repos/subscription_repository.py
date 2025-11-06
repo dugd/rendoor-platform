@@ -1,6 +1,7 @@
 from uuid import UUID
+from datetime import datetime
 
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete, update, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.domain.notify import Subscription
@@ -55,7 +56,7 @@ class SubscriptionRepository:
 
     async def get_all_active(self) -> list[Subscription]:
         """Get all active subscriptions across all users"""
-        stmt = select(SubscriptionORM).where(SubscriptionORM.is_active == True)
+        stmt = select(SubscriptionORM).where(SubscriptionORM.is_active)
         result = await self._session.execute(stmt)
         orm_subscriptions = result.scalars().all()
 
@@ -67,7 +68,7 @@ class SubscriptionRepository:
             select(SubscriptionORM)
             .join(FilterORM, SubscriptionORM.filter_id == FilterORM.id)
             .where(FilterORM.tg_user_id == user_id)
-            .where(SubscriptionORM.is_active == True)
+            .where(SubscriptionORM.is_active)
         )
         result = await self._session.execute(stmt)
         orm_subscription = result.scalar_one_or_none()
@@ -103,7 +104,7 @@ class SubscriptionRepository:
         stmt = (
             update(SubscriptionORM)
             .where(SubscriptionORM.filter_id.in_(filter_ids))
-            .where(SubscriptionORM.is_active == True)
+            .where(SubscriptionORM.is_active)
             .values(is_active=False)
         )
         await self._session.execute(stmt)
@@ -114,3 +115,45 @@ class SubscriptionRepository:
         stmt = delete(SubscriptionORM).where(SubscriptionORM.id == subscription_id)
         await self._session.execute(stmt)
         await self._session.flush()
+
+    # ========= Statistics =========
+
+    async def get_active_count(
+        self,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+    ) -> int:
+        """Get count of active subscriptions"""
+        query = select(func.count(SubscriptionORM.id)).where(SubscriptionORM.is_active)
+
+        conditions = []
+        if created_after:
+            conditions.append(SubscriptionORM.created_at >= created_after)
+        if created_before:
+            conditions.append(SubscriptionORM.created_at <= created_before)
+
+        if conditions:
+            query = query.where(and_(*conditions))
+
+        result = await self._session.execute(query)
+        return result.scalar_one()
+
+    async def get_total_count(
+        self,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+    ) -> int:
+        """Get total count of all subscriptions"""
+        query = select(func.count(SubscriptionORM.id))
+
+        conditions = []
+        if created_after:
+            conditions.append(SubscriptionORM.created_at >= created_after)
+        if created_before:
+            conditions.append(SubscriptionORM.created_at <= created_before)
+
+        if conditions:
+            query = query.where(and_(*conditions))
+
+        result = await self._session.execute(query)
+        return result.scalar_one()

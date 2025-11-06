@@ -1,15 +1,19 @@
 from aiogram import Router, F
-from aiogram.types import Message
+from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 import math
 
 from ui.bot.keyboards.reply import get_main_menu_kb
-from ui.bot.keyboards.inline import get_favorites_list_kb
+from ui.bot.keyboards.inline import (
+    get_favorites_list_kb,
+    get_stats_navigation_kb,
+    get_platform_stats_kb,
+)
 from ui.bot.utils import messages
 from ui.bot.config import PAGINATION_LIMIT
 from ui.bot.states import FavoritesStates
 from core.domain.user import TgUser
-from core.services import FilterService, FavoriteService
+from core.services import FavoriteService, StatisticsService
 from core.infra.repos import ListingRepository
 
 router = Router(name="menu")
@@ -51,28 +55,136 @@ async def show_help(message: Message):
 async def show_stats(
     message: Message,
     user: TgUser,
-    filter_service: FilterService,
+    statistics_service: StatisticsService,
 ):
-    filters = await filter_service.get_user_filters(user.uuid)
+    """Show user's personal statistics"""
+    stats = await statistics_service.get_user_statistics(user.uuid)
 
-    # TODO: Get favorites count and listings count from database
-    stats = {
-        "filters_count": len(filters),
-        "favorites_count": 0,
-        "listings_count": 0,
-    }
+    subscription_status = "Так ✅" if stats.active_subscription else "Ні ❌"
 
     stats_text = f"""
 📊 <b>Твоя статистика</b>
 
-📋 Фільтрів створено: {stats["filters_count"]}
-❤️ В обраному: {stats["favorites_count"]}
-📨 Отримано оголошень: {stats["listings_count"]}
+📋 Фільтрів створено: {stats.filters_count}
+❤️ В обраному: {stats.favorites_count}
+🔔 Активна підписка: {subscription_status}
 
 <i>Продовжуй користуватись ботом, щоб знайти ідеальне житло! 🏠</i>
 """
 
-    await message.answer(stats_text)
+    await message.answer(stats_text, reply_markup=get_stats_navigation_kb())
+
+
+@router.callback_query(F.data.startswith("stats:platform:"))
+async def show_platform_stats(
+    callback: CallbackQuery,
+    statistics_service: StatisticsService,
+):
+    """Show platform-wide statistics with period selection"""
+    await callback.answer()
+
+    # Extract period
+    period = callback.data.split(":")[-1]
+
+    # Map period to days
+    period_days_map = {
+        "1": 1,
+        "7": 7,
+        "30": 30,
+    }
+    period_days = period_days_map.get(period, 7)
+
+    # Platform statistics
+    stats = await statistics_service.get_platform_statistics(period_days=period_days)
+
+    # Format period name
+    period_name_map = {
+        "1": "24 години",
+        "7": "тиждень",
+        "30": "30 днів",
+    }
+    period_name = period_name_map.get(period, "тиждень")
+
+    # Format top cities
+    if stats.listings_by_city:
+        city_stats = "\n".join(
+            [
+                f"  • {city.city}: {city.count} ({city.avg_price:,.0f} грн)"
+                if city.avg_price
+                else f"  • {city.city}: {city.count}"
+                for city in stats.listings_by_city[:5]
+            ]
+        )
+    else:
+        city_stats = "  <i>Немає даних</i>"
+
+    # Format popular search
+    if stats.popular_cities:
+        popular_cities = "\n".join(
+            [
+                f"  • {city.city}: {city.count} пошуків"
+                for city in stats.popular_cities[:5]
+            ]
+        )
+    else:
+        popular_cities = "  <i>Немає даних</i>"
+
+    stats_text = f"""
+📈 <b>Статистика платформи</b>
+<i>За період: {period_name}</i>
+
+👥 <b>Користувачі:</b>
+  • Всього: {stats.total_users}
+  • Активних: {stats.active_users}
+
+🏠 <b>Оголошення:</b>
+  • Всього: {stats.total_listings}
+  • Активних: {stats.active_listings}
+
+🏙 <b>Топ міст (по оголошенням):</b>
+{city_stats}
+
+🔍 <b>Популярні міста (по пошукам):</b>
+{popular_cities}
+
+📋 <b>Фільтри та підписки:</b>
+  • Створено фільтрів: {stats.total_filters}
+  • Активних підписок: {stats.active_subscriptions}
+
+❤️ <b>Обране:</b>
+  • Всього збережено: {stats.total_favorites}
+"""
+
+    # Edit message
+    await callback.message.edit_text(
+        stats_text, reply_markup=get_platform_stats_kb(period=period)
+    )
+
+
+@router.callback_query(F.data == "stats:user")
+async def back_to_user_stats(
+    callback: CallbackQuery,
+    user: TgUser,
+    statistics_service: StatisticsService,
+):
+    """Return to user's personal statistics"""
+    await callback.answer()
+
+    stats = await statistics_service.get_user_statistics(user.uuid)
+
+    subscription_status = "Так ✅" if stats.active_subscription else "Ні ❌"
+
+    stats_text = f"""
+📊 <b>Твоя статистика</b>
+
+📋 Фільтрів створено: {stats.filters_count}
+❤️ В обраному: {stats.favorites_count}
+🔔 Активна підписка: {subscription_status}
+
+<i>Продовжуй користуватись ботом, щоб знайти ідеальне житло! 🏠</i>
+"""
+
+    await callback.message.edit_text(stats_text, reply_markup=get_stats_navigation_kb())
 
 
 @router.message(F.text == "❤️ Обране")

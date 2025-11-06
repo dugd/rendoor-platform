@@ -1,6 +1,19 @@
 from typing import Protocol
+from datetime import datetime
+from dataclasses import dataclass
 
 from core.domain.listing import Listing
+
+
+@dataclass
+class ListingStatsByCity:
+    """Statistics for listings grouped by city"""
+
+    city: str
+    count: int
+    avg_price: float | None
+    min_price: float | None
+    max_price: float | None
 
 
 class IListingRepository(Protocol):
@@ -22,4 +35,23 @@ class IListingRepository(Protocol):
         self, source_code: str, external_id: str
     ) -> Listing | None:
         """Find listing by source code and external ID"""
+        ...
+
+    async def get_stats_by_city(
+        self,
+        only_active: bool = True,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+    ) -> list[ListingStatsByCity]:
+        """Get statistics grouped by city"""
+        ...
+
+    async def get_total_count(
+        self,
+        city: str | None = None,
+        only_active: bool = True,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+    ) -> int:
+        """Get total count of listings with optional filters"""
         ...
